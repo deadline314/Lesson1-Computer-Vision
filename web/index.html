@@ -1,0 +1,3984 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>視覺模型基礎</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Gloria+Hallelujah&family=Kalam:wght@400;700&family=Patrick+Hand&family=Shippori+Mincho:wght@500;700;800&family=Noto+Serif+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5ecd9;
+    --paper-light: #faf3e0;
+    --paper-dark: #e8dcb9;
+    --ink: #3d2f1f;
+    --ink-soft: #6b5942;
+    --ink-faint: #a89878;
+    --red: #c8553d;
+    --orange: #e89c50;
+    --yellow: #e8c547;
+    --green: #6a9b5e;
+    --blue: #4a87a8;
+    --purple: #8b6db5;
+    --pink: #d68fa8;
+    --line: #c4b289;
+    --line-soft: #d8c8a3;
+    --cream: #fff8e7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* Paper texture using SVG noise */
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Serif TC', 'Shippori Mincho', serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(232, 197, 71, 0.08), transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(200, 85, 61, 0.05), transparent 50%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.24 0 0 0 0 0.18 0 0 0 0 0.12 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Subtle ruled paper lines, very faint */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: repeating-linear-gradient(
+      transparent 0,
+      transparent 31px,
+      rgba(180, 150, 90, 0.06) 32px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ============= HEADER ============= */
+  header {
+    padding: 56px 0 32px;
+    position: relative;
+  }
+  .corner-decoration {
+    position: absolute;
+    top: 30px; right: 32px;
+    font-family: 'Gloria Hallelujah', cursive;
+    color: var(--ink-faint);
+    font-size: 13px;
+    transform: rotate(3deg);
+    text-align: right;
+    line-height: 1.5;
+  }
+  .corner-decoration::before {
+    content: '★';
+    color: var(--orange);
+    margin-right: 6px;
+  }
+  h1.title {
+    font-family: 'Shippori Mincho', 'Noto Serif TC', serif;
+    font-weight: 800;
+    font-size: clamp(38px, 6vw, 64px);
+    line-height: 1.1;
+    color: var(--ink);
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+  h1.title .highlight {
+    background: linear-gradient(180deg, transparent 60%, var(--yellow) 60%, var(--yellow) 90%, transparent 90%);
+    padding: 0 6px;
+    font-style: italic;
+  }
+  h1.title .scribble {
+    font-family: 'Caveat', cursive;
+    color: var(--red);
+    font-weight: 700;
+    font-size: 0.85em;
+    transform: rotate(-2deg);
+    display: inline-block;
+  }
+  .subtitle {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 22px;
+    color: var(--ink-soft);
+    max-width: 720px;
+    line-height: 1.5;
+    margin-bottom: 36px;
+  }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 12px 24px;
+    align-items: center;
+    padding: 18px 0;
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--line);
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .meta-stamp {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 2px dashed var(--red);
+    color: var(--red);
+    font-weight: 700;
+    transform: rotate(-2deg);
+    font-family: 'Caveat', cursive;
+    font-size: 16px;
+  }
+  .help-banner {
+    margin-top: 28px;
+    padding: 16px 20px;
+    background: var(--cream);
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
+    box-shadow: 4px 4px 0 var(--ink);
+    font-family: 'Patrick Hand', cursive;
+    font-size: 16px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    transform: rotate(-0.3deg);
+  }
+  .help-banner-icon {
+    width: 32px; height: 32px;
+    background: var(--orange);
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    color: var(--ink);
+    flex-shrink: 0;
+    font-size: 22px;
+  }
+
+  /* ============= TOOLTIP / TERMS ============= */
+  .term {
+    color: var(--red);
+    cursor: help;
+    border-bottom: 2px wavy var(--red);
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.2s;
+    padding: 0 2px;
+  }
+  .term:hover { background: var(--yellow); }
+
+  .term-tip {
+    position: fixed;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    padding: 16px 18px;
+    max-width: 380px;
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.6;
+    z-index: 1000;
+    box-shadow: 6px 6px 0 var(--ink);
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.15s;
+    font-family: 'Noto Serif TC', serif;
+    display: none;
+  }
+  .term-tip.visible { opacity: 1; display: block; }
+  .term-tip a {
+    color: var(--blue);
+    text-decoration: none;
+    border-bottom: 1.5px solid var(--blue);
+  }
+  .term-tip a:hover { background: var(--yellow); }
+  .term-tip .tip-title {
+    font-family: 'Caveat', cursive;
+    font-size: 20px;
+    color: var(--red);
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .term-tip .tip-link {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    font-family: 'Patrick Hand', cursive;
+    font-size: 13px;
+  }
+
+  /* ============= TAB NAV ============= */
+  nav.tabs {
+    position: sticky;
+    top: 0;
+    background: var(--paper);
+    z-index: 100;
+    border-bottom: 2px solid var(--ink);
+    margin: 0 -32px;
+    padding: 0 32px;
+    backdrop-filter: blur(8px);
+  }
+  .tabs-inner {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 8px 0;
+  }
+  .tabs-inner::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 10px 16px;
+    background: transparent;
+    border: 2px solid transparent;
+    color: var(--ink-soft);
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    border-radius: 8px;
+    transition: all 0.2s;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab:hover {
+    background: var(--paper-dark);
+    color: var(--ink);
+  }
+  .tab.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .tab-icon { font-size: 16px; }
+
+  /* ============= TAB CONTENT ============= */
+  .tab-content {
+    display: none;
+    padding: 48px 0;
+    animation: fadeIn 0.3s ease;
+  }
+  .tab-content.active { display: block; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  h2.section-title {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--ink);
+    position: relative;
+    display: inline-block;
+  }
+  h2.section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0; right: 0;
+    height: 4px;
+    background: var(--yellow);
+    z-index: -1;
+    border-radius: 2px;
+  }
+  .section-tag {
+    display: inline-block;
+    font-family: 'Caveat', cursive;
+    color: var(--red);
+    font-size: 18px;
+    margin-left: 12px;
+    transform: rotate(-3deg);
+    font-weight: 700;
+  }
+  .section-desc {
+    color: var(--ink-soft);
+    margin: 24px 0 32px;
+    max-width: 800px;
+    font-size: 16px;
+  }
+
+  /* Concept cards */
+  .concept-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .concept-card {
+    padding: 18px 18px 16px;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 var(--ink);
+    position: relative;
+    transition: transform 0.2s;
+  }
+  .concept-card:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
+  .concept-card:nth-child(1) { transform: rotate(-0.6deg); }
+  .concept-card:nth-child(2) { transform: rotate(0.4deg); }
+  .concept-card:nth-child(3) { transform: rotate(-0.3deg); }
+  .concept-card:nth-child(4) { transform: rotate(0.5deg); }
+  .concept-card-pin {
+    position: absolute;
+    top: -8px; left: 16px;
+    width: 18px; height: 18px;
+    background: var(--red);
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    box-shadow: inset -3px -3px 4px rgba(0,0,0,0.2);
+  }
+  .concept-card-title {
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+    color: var(--red);
+    margin-bottom: 8px;
+    font-weight: 700;
+    margin-left: 28px;
+  }
+  .concept-card-text {
+    font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+
+  /* Demo grid */
+  .demo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 1000px) { .demo-grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    box-shadow: 5px 5px 0 var(--ink);
+    padding: 24px;
+    min-width: 0;
+  }
+  .panel-label {
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+  }
+  .panel-label::before {
+    content: '✎';
+    color: var(--red);
+    font-size: 20px;
+  }
+
+  /* Canvas styling */
+  .conv-canvas-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  canvas.demo-canvas {
+    background: #fff;
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    box-shadow: 3px 3px 0 var(--ink-faint);
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Kernel grid */
+  .kernel-section { width: 100%; margin-top: 14px; }
+  .kernel-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 60px);
+    gap: 6px;
+    justify-content: center;
+    margin: 0 auto;
+  }
+  .kernel-cell {
+    width: 60px; height: 60px;
+    background: #fff;
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    font-family: 'Patrick Hand', cursive;
+    font-size: 18px;
+    text-align: center;
+    border-radius: 6px;
+    transition: all 0.15s;
+    padding: 0;
+    font-weight: 700;
+  }
+  .kernel-cell:focus {
+    outline: none;
+    background: var(--yellow);
+    box-shadow: 0 0 0 3px rgba(232, 197, 71, 0.4);
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 16px;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s;
+    font-weight: 700;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .btn:hover {
+    background: var(--yellow);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 0 0 0 var(--ink);
+  }
+  .btn.primary {
+    background: var(--orange);
+    color: var(--ink);
+  }
+  .btn.primary:hover { background: var(--yellow); }
+  .btn.danger { color: var(--red); }
+  .btn.tiny { padding: 5px 10px; font-size: 12px; }
+  .btn[data-active="true"] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+    justify-content: center;
+  }
+
+  .img-row { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+  .img-thumb {
+    width: 44px; height: 44px;
+    border: 2px solid var(--ink);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+    image-rendering: pixelated;
+    background: #fff;
+  }
+  .img-thumb:hover { transform: translateY(-2px); }
+  .img-thumb.active {
+    border-color: var(--red);
+    box-shadow: 0 0 0 2px var(--red), 3px 3px 0 var(--ink-faint);
+  }
+
+  /* Sliders */
+  .controls-box {
+    padding: 18px 22px;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 var(--ink);
+    margin-bottom: 24px;
+  }
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  .slider-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .slider-label {
+    font-family: 'Kalam', cursive;
+    font-size: 15px;
+    color: var(--ink);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+  }
+  .slider-label .val {
+    background: var(--yellow);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 14px;
+  }
+  .slider-help {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 13px;
+    color: var(--ink-faint);
+    line-height: 1.4;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: var(--paper-dark);
+    outline: none;
+    border-radius: 3px;
+    border: 1.5px solid var(--ink);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    background: var(--red);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2.5px solid var(--ink);
+    box-shadow: 1px 1px 0 var(--ink);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    background: var(--red);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2.5px solid var(--ink);
+  }
+  input[type="range"]:disabled::-webkit-slider-thumb {
+    background: var(--ink-faint);
+    cursor: not-allowed;
+  }
+
+  /* Layer bars */
+  .layers-vis {
+    display: flex;
+    gap: 2px;
+    height: 80px;
+    align-items: stretch;
+    margin-bottom: 8px;
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1.5px dashed var(--line);
+    border-radius: 4px;
+  }
+  .layer-bar {
+    flex: 1;
+    background: var(--green);
+    border-radius: 2px;
+    transition: all 0.3s;
+    min-width: 4px;
+  }
+  .layers-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin-top: 4px;
+  }
+
+  /* Info cells */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .info-cell {
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 6px;
+    border: 1.5px dashed var(--line);
+  }
+  .info-cell-label {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 13px;
+    color: var(--ink-faint);
+    margin-bottom: 2px;
+  }
+  .info-cell-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--red);
+    font-weight: 700;
+    word-break: break-all;
+  }
+
+  /* Note callout */
+  .note {
+    margin-top: 28px;
+    padding: 20px 22px;
+    background: rgba(232, 197, 71, 0.18);
+    border: 2px solid var(--ink);
+    border-left: 6px solid var(--orange);
+    border-radius: 8px;
+    box-shadow: 4px 4px 0 var(--ink);
+    font-size: 15px;
+    color: var(--ink);
+    line-height: 1.7;
+    position: relative;
+  }
+  .note-title {
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+    color: var(--red);
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .note strong { background: var(--yellow); padding: 0 4px; border-radius: 2px; }
+
+  /* Resources */
+  .resources {
+    margin-top: 24px;
+    padding: 20px 22px;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .resources-title {
+    font-family: 'Caveat', cursive;
+    font-size: 24px;
+    color: var(--ink);
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  .resources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .resource-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1.5px dashed var(--line);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--ink);
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .resource-link:hover {
+    background: var(--yellow);
+    border-style: solid;
+    border-color: var(--ink);
+  }
+  .resource-link::before {
+    content: '→ ';
+    color: var(--red);
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .resource-tag {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 12px;
+    color: var(--ink-faint);
+    padding: 2px 8px;
+    background: var(--paper-dark);
+    border-radius: 4px;
+  }
+
+  /* PyTorch code */
+  pre.code-output {
+    background: #2d2419;
+    color: #f5ecd9;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    box-shadow: 3px 3px 0 var(--ink);
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    overflow-x: auto;
+    line-height: 1.6;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .code-output .kw { color: #e89c50; }
+  .code-output .cls { color: #e8c547; }
+  .code-output .num { color: #6ab7ff; }
+  .code-output .com { color: #a89878; font-style: italic; }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: inline-flex;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .mode-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    color: var(--ink-soft);
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+    font-weight: 700;
+  }
+  .mode-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* Builder */
+  .builder-grid {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 1100px) { .builder-grid { grid-template-columns: 1fr; } }
+
+  .palette { display: flex; flex-direction: column; gap: 8px; }
+  .palette-item {
+    padding: 10px 14px;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    font-family: 'Kalam', cursive;
+    font-size: 13px;
+    cursor: grab;
+    border-radius: 8px;
+    transition: all 0.15s;
+    user-select: none;
+    box-shadow: 2px 2px 0 var(--ink);
+    font-weight: 700;
+  }
+  .palette-item:hover {
+    background: var(--yellow);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .palette-item:active { cursor: grabbing; }
+  .palette-item-label { display: flex; justify-content: space-between; align-items: center; }
+  .palette-item-hint {
+    font-family: 'Patrick Hand', cursive;
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  .stack {
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.4);
+    border: 2px dashed var(--line);
+    border-radius: 8px;
+  }
+  .stack.drag-over { border-color: var(--red); background: rgba(232, 197, 71, 0.2); }
+  .stack-empty {
+    color: var(--ink-faint);
+    font-family: 'Caveat', cursive;
+    font-size: 18px;
+    text-align: center;
+    padding: 80px 20px;
+  }
+  .stack-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--cream);
+    border: 1.5px solid var(--ink);
+    border-left: 5px solid var(--green);
+    border-radius: 6px;
+    font-family: 'Kalam', cursive;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .stack-item-shape {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--blue);
+    font-size: 11px;
+    text-align: right;
+  }
+  .stack-item-remove {
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .params-display {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: var(--orange);
+    color: var(--ink);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .params-display .value { font-family: 'JetBrains Mono', monospace; }
+
+  /* Pooling viz cells */
+  .pool-grid {
+    display: grid;
+    gap: 3px;
+    margin: 16px auto;
+    background: var(--ink);
+    padding: 3px;
+    border-radius: 6px;
+    border: 2px solid var(--ink);
+    width: fit-content;
+  }
+  .pool-cell {
+    width: 36px; height: 36px;
+    background: #fff;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    transition: all 0.3s;
+  }
+  .pool-cell.in-window { background: var(--yellow); box-shadow: inset 0 0 0 2px var(--orange); }
+  .pool-cell.is-max { background: var(--red); color: var(--paper); }
+  .pool-output-cell {
+    width: 64px; height: 64px;
+    background: var(--green);
+    color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    border: 2px solid var(--ink);
+  }
+
+  /* SVG plots base */
+  svg.plot {
+    background: #fff;
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    box-shadow: 3px 3px 0 var(--ink-faint);
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Nice headings inline */
+  h3.subhead {
+    font-family: 'Caveat', cursive;
+    font-size: 26px;
+    color: var(--ink);
+    margin: 24px 0 12px;
+    font-weight: 700;
+  }
+  h3.subhead::before {
+    content: '◆ ';
+    color: var(--orange);
+  }
+
+  /* Mobile */
+  @media (max-width: 600px) {
+    .container { padding: 0 20px; }
+    nav.tabs { margin: 0 -20px; padding: 0 20px; }
+    .corner-decoration { display: none; }
+  }
+
+  /* Small chip */
+  .chip {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--paper-dark);
+    border: 1.5px solid var(--ink);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink);
+    margin: 0 2px;
+  }
+  .chip.red { background: var(--red); color: var(--paper); border-color: var(--ink); }
+  .chip.green { background: var(--green); color: var(--paper); }
+  .chip.blue { background: var(--blue); color: var(--paper); }
+  .chip.yellow { background: var(--yellow); }
+
+  /* FC vs Conv comparison bars */
+  .compare-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1.5px dashed var(--line);
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .compare-bar-label {
+    width: 100px;
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .compare-bar-fill {
+    flex: 1;
+    height: 28px;
+    background: var(--paper-dark);
+    border-radius: 4px;
+    border: 1.5px solid var(--ink);
+    overflow: hidden;
+    position: relative;
+  }
+  .compare-bar-inner {
+    height: 100%;
+    background: var(--red);
+    transition: width 0.5s;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* Residual flow diagram */
+  .resblock-svg-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 16px 0;
+  }
+
+  /* ============= ACCORDION ============= */
+  .accordion { margin-bottom: 12px; }
+  .accordion-header {
+    padding: 14px 18px;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Kalam', cursive;
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .accordion-header:hover { background: var(--yellow); transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+  .accordion-header.open { border-radius: 8px 8px 0 0; background: var(--ink); color: var(--paper); }
+  .accordion-header::after { content: '\25B8'; transition: transform 0.2s; }
+  .accordion-header.open::after { transform: rotate(90deg); }
+  .accordion-body {
+    display: none;
+    padding: 18px 20px;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--ink);
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .accordion-body.open { display: block; animation: fadeIn 0.3s ease; }
+
+  /* ============= PROGRESS BAR ============= */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 4px;
+    background: var(--red);
+    z-index: 9999;
+    transition: width 0.3s;
+  }
+
+  /* ============= QUIZ ============= */
+  .quiz-box {
+    margin-top: 24px;
+    padding: 20px 22px;
+    background: var(--cream);
+    border: 2px solid var(--green);
+    border-radius: 12px;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .quiz-title {
+    font-family: 'Caveat', cursive;
+    font-size: 22px;
+    color: var(--green);
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  .quiz-option {
+    display: block;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.6);
+    border: 1.5px solid var(--line);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .quiz-option:hover { background: var(--yellow); border-color: var(--ink); }
+  .quiz-option.correct { background: rgba(106, 155, 94, 0.3); border-color: var(--green); }
+  .quiz-option.wrong { background: rgba(200, 85, 61, 0.2); border-color: var(--red); }
+  .quiz-feedback {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: 'Patrick Hand', cursive;
+    font-size: 14px;
+    display: none;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: rgba(106, 155, 94, 0.2); color: var(--green); }
+  .quiz-feedback.wrong { background: rgba(200, 85, 61, 0.15); color: var(--red); }
+
+  /* ============= CODE BLOCKS ============= */
+  .code-block {
+    background: #2d2419;
+    color: #f5ecd9;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    box-shadow: 3px 3px 0 var(--ink);
+    padding: 16px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin: 16px 0;
+    white-space: pre;
+  }
+  .code-block .kw { color: #e89c50; }
+  .code-block .fn { color: #6ab7ff; }
+  .code-block .str { color: #6a9b5e; }
+  .code-block .cm { color: #a89878; font-style: italic; }
+  .code-block .num { color: #d68fa8; }
+  .code-block .cls { color: #e8c547; }
+
+  /* ============= TIMELINE ============= */
+  .timeline {
+    position: relative;
+    padding-left: 30px;
+    margin: 24px 0;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--ink);
+    border-radius: 2px;
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -26px;
+    top: 18px;
+    width: 14px;
+    height: 14px;
+    background: var(--red);
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+  }
+  .timeline-year {
+    font-family: 'Caveat', cursive;
+    font-size: 20px;
+    color: var(--red);
+    font-weight: 700;
+  }
+  .timeline-title {
+    font-family: 'Kalam', cursive;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 4px 0;
+  }
+  .timeline-desc {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+
+  /* ============= COMPARISON TABLE ============= */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 12px;
+    font-family: 'Kalam', cursive;
+  }
+  .compare-table th {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 700;
+    position: sticky;
+    top: 0;
+  }
+  .compare-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  .compare-table tr:hover td { background: rgba(232, 197, 71, 0.15); }
+  .compare-table-wrap {
+    overflow-x: auto;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  /* ============= CHECKLIST ============= */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.5);
+    border: 1.5px solid var(--line);
+    border-radius: 6px;
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .checklist li:hover { background: var(--yellow); }
+  .checklist li.checked { text-decoration: line-through; color: var(--ink-faint); border-color: var(--green); }
+  .checklist li::before {
+    content: '\2610';
+    font-size: 18px;
+    color: var(--ink-faint);
+  }
+  .checklist li.checked::before { content: '\2611'; color: var(--green); }
+
+  /* ============= GRADING TABLE ============= */
+  .grading-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-family: 'Kalam', cursive;
+    font-size: 14px;
+  }
+  .grading-table th {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 700;
+  }
+  .grading-table td {
+    padding: 10px 16px;
+    border-bottom: 1.5px solid var(--line);
+  }
+  .grading-table tr:hover td { background: rgba(232, 197, 71, 0.12); }
+  .grading-table .pct {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--red);
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="container">
+  <header>
+    <div class="corner-decoration">
+      第一堂課 / 共四堂<br>
+      Vision 101
+    </div>
+    <h1 class="title">
+      電腦怎麼<span class="highlight">看圖</span>?<br>
+      <span class="scribble">從 CNN 到 YOLO 的奇幻旅程</span>
+    </h1>
+    <p class="subtitle">
+      這是一本互動筆記本。十四個主題、多個互動玩具,慢慢操作就能搞懂這些模型在做什麼。
+    </p>
+    <div class="meta-row">
+      <span class="meta-stamp">120 min</span>
+      <span>📚 14 個互動 demo</span>
+      <span>·</span>
+      <span>🎯 從基礎到 YOLOv8</span>
+      <span>·</span>
+      <span>✏️ 作業:做一個自己的 YOLO</span>
+    </div>
+    <div class="help-banner">
+      <span class="help-banner-icon">!</span>
+      <span>看到 <span class="term" data-term="example">紅色波浪底線的字</span> 就把滑鼠移上去,有詳細解釋跟外部連結。慢慢來,不用一次看懂。</span>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <div class="tabs-inner">
+      <button class="tab active" data-tab="intro"><span class="tab-icon">🎬</span>開場</button>
+      <button class="tab" data-tab="conv"><span class="tab-icon">🎨</span>卷積 Conv</button>
+      <button class="tab" data-tab="pool"><span class="tab-icon">🪟</span>池化 Pool</button>
+      <button class="tab" data-tab="activation"><span class="tab-icon">⚡</span>激活函數</button>
+      <button class="tab" data-tab="bn"><span class="tab-icon">📊</span>Batch Norm</button>
+      <button class="tab" data-tab="fc"><span class="tab-icon">🔗</span>FC vs Conv</button>
+      <button class="tab" data-tab="gradient"><span class="tab-icon">📉</span>梯度消失</button>
+      <button class="tab" data-tab="residual"><span class="tab-icon">🔁</span>殘差學習</button>
+      <button class="tab" data-tab="cnnhistory"><span class="tab-icon">📜</span>CNN 演進</button>
+      <button class="tab" data-tab="yolo"><span class="tab-icon">🎯</span>YOLO Anchor</button>
+      <button class="tab" data-tab="yoloevo"><span class="tab-icon">🚀</span>YOLO 演進</button>
+      <button class="tab" data-tab="builder"><span class="tab-icon">🧱</span>模型組裝</button>
+      <button class="tab" data-tab="pytorch"><span class="tab-icon">🐍</span>PyTorch 實作</button>
+      <button class="tab" data-tab="assignment"><span class="tab-icon">📝</span>作業說明</button>
+    </div>
+  </nav>
+
+  <!-- ========== TAB 0: INTRODUCTION ========== -->
+  <section class="tab-content active" id="tab-intro">
+    <h2 class="section-title">開場:為什麼需要 CNN?</h2>
+    <span class="section-tag">The Big Question</span>
+    <p class="section-desc">
+      如果你今天要寫一個程式,告訴電腦「<strong>這張圖裡有沒有貓</strong>」,你會怎麼寫?
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">直覺做法?</div>
+        <div class="concept-card-text">「找到尖尖的耳朵 → 貓!」但尖耳朵的東西太多了:狐狸、兔子、紙做的角…</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">顏色判斷?</div>
+        <div class="concept-card-text">「橘色毛 → 貓!」那黑貓呢?那橘色的枕頭呢?人寫規則,永遠寫不完。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Template Matching?</div>
+        <div class="concept-card-text">存一張「標準貓」去比對?但貓有各種姿勢、各種距離、各種品種…</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">答案:讓機器自己學!</div>
+        <div class="concept-card-text">給大量「有貓 / 沒貓」的圖片,讓模型自己學出什麼特徵代表貓。這就是 CNN。</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top: 24px;">
+      <div class="panel-label">傳統方法 vs Deep Learning</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 12px;">
+        <div style="padding: 16px; background: rgba(200, 85, 61, 0.1); border-radius: 8px; border: 1.5px dashed var(--red);">
+          <div style="font-family: 'Caveat', cursive; font-size: 22px; color: var(--red); margin-bottom: 8px;">❌ 傳統方法</div>
+          <p style="font-size: 14px; line-height: 1.7; color: var(--ink-soft);">
+            人類手動設計特徵 (SIFT, HOG, Haar)
+            → 每換一個任務就要重新設計
+            → 永遠有 edge case
+            → 規則越多越脆弱
+          </p>
+        </div>
+        <div style="padding: 16px; background: rgba(106, 155, 94, 0.1); border-radius: 8px; border: 1.5px dashed var(--green);">
+          <div style="font-family: 'Caveat', cursive; font-size: 22px; color: var(--green); margin-bottom: 8px;">✓ CNN / Deep Learning</div>
+          <p style="font-size: 14px; line-height: 1.7; color: var(--ink-soft);">
+            模型自動學習特徵 (end-to-end)
+            → 只要有足夠的資料
+            → 特徵會自動變得越來越抽象
+            → 第 1 層學邊緣 → 中間學紋理 → 最後學物件
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">CNN 為什麼是答案?</h3>
+    <div class="accordion">
+      <div class="accordion-header">1. 局部連接 (Local Connectivity) — 不需要看完整張圖</div>
+      <div class="accordion-body">
+        人類看圖也是先看局部:先注意到「尖尖的形狀」、「毛茸茸的紋理」、「圓圓的眼睛」。
+        CNN 的 kernel 也是一小塊一小塊地看,非常符合圖片的性質。比起 FC 把所有像素混在一起,Conv 保留了「空間關係」。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">2. 權重共享 (Weight Sharing) — 一個偵測器用遍全圖</div>
+      <div class="accordion-body">
+        「貓的眼睛」不管出現在圖的左上角還是右下角,都應該被同一個偵測器抓到。
+        CNN 的同一個 kernel 滑過整張圖 = 相當於共享權重 = 大幅減少參數量。
+        一張 224×224 的圖,如果用 FC 需要 5000 萬參數;用 Conv 3×3 只需要 9 個。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">3. 階層式特徵 (Hierarchical Features) — 從簡單到複雜</div>
+      <div class="accordion-body">
+        多層 Conv 堆疊後:第一層學到邊緣和顏色,第二層組合出紋理和角,第三層以後逐漸出現「耳朵」「眼睛」等部件,最深層才是「貓」這個完整概念。這跟人類視覺皮層 V1→V2→V4→IT 的處理過程驚人地相似。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">4. 平移不變性 (Translation Invariance) — 貓在哪都是貓</div>
+      <div class="accordion-body">
+        因為權重共享加上 pooling,CNN 天生具有一定的平移不變性。貓移到圖片另一邊,模型照樣認得出來。
+        這是 FC 完全做不到的 — FC 必須從零學習「同一個 pattern 出現在不同位置」的所有情況。
+      </div>
+    </div>
+
+    <div class="note" style="margin-top: 32px;">
+      <div class="note-title">本堂課目標</div>
+      從最基本的<strong>卷積</strong>開始,一路走到<strong>YOLO 物件偵測</strong>。
+      每一個概念都有互動 demo 可以玩。重點不是背公式,而是<strong>建立直覺</strong>。
+      <br><br>
+      點上面的 Tab 開始探索吧!建議順序就是從左到右。
+    </div>
+
+    <div class="quiz-box" data-quiz="intro-q1">
+      <div class="quiz-title">小測驗</div>
+      <p style="font-size: 14px; margin-bottom: 12px;">CNN 相比 FC (全連接層) 最大的優勢是什麼?</p>
+      <div class="quiz-option" data-correct="false" data-explanation="精度不一定更高,要看任務和資料量。">精度永遠比較高</div>
+      <div class="quiz-option" data-correct="true" data-explanation=" 因為權重共享,同一個 kernel 只有 9 個參數卻能偵測整張圖的特徵。">參數量大幅減少,利用了圖片的空間結構</div>
+      <div class="quiz-option" data-correct="false" data-explanation="訓練速度取決於很多因素,不一定更快。">訓練速度一定更快</div>
+      <div class="quiz-option" data-correct="false" data-explanation="CNN 不需要人工標籤不太對,supervised CNN 還是需要的。">不需要任何標記資料</div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </section>
+
+  <!-- ========== TAB 1: CONVOLUTION ========== -->
+  <section class="tab-content" id="tab-conv">
+    <h2 class="section-title">卷積遊樂場</h2>
+    <span class="section-tag">Convolution Playground</span>
+    <p class="section-desc">
+      自己拖一個 <span class="term" data-term="kernel">3×3 kernel</span> 的數值,看它對圖片做了什麼。
+      <span class="term" data-term="cnn">CNN</span> 第一層就是在做這件事,只是 kernel 的值是模型自己<span class="term" data-term="learn">學出來的</span>。
+      新增了 stride 和 padding 可以調,還有 <span class="term" data-term="receptive">receptive field</span> 動畫。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">什麼是卷積?</div>
+        <div class="concept-card-text">一個小窗戶在圖上滑,每滑一次做一次<span class="term" data-term="dotproduct">點積</span>運算,輸出一張 feature map。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼是 3×3?</div>
+        <div class="concept-card-text"><span class="term" data-term="vgg">VGG 論文</span>證明兩個 3×3 等於一個 5×5,但參數更少。3×3 從此成為共識。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">什麼是 feature map?</div>
+        <div class="concept-card-text">每個 kernel 滑完整張圖後產生的 2D 矩陣,<span class="term" data-term="featuremap">代表「某種特徵在哪裡出現」</span>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">Padding & Stride</div>
+        <div class="concept-card-text"><span class="term" data-term="padding">Padding</span> 是邊緣補幾圈 0,<span class="term" data-term="stride">stride</span> 是一次滑幾格。下面可以調看看。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Stride 步長</span><span class="val" id="convStrideVal">1</span></div>
+          <input type="range" id="convStride" min="1" max="3" value="1" step="1">
+          <div class="slider-help">每次滑幾格;stride=2 → 輸出尺寸減半</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Padding 補邊</span><span class="val" id="convPadVal">1</span></div>
+          <input type="range" id="convPad" min="0" max="2" value="1" step="1">
+          <div class="slider-help">邊緣補幾圈 0;padding=1 + 3×3 + stride=1 → 尺寸不變</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>顯示 Receptive Field</span></div>
+          <button id="rfToggle" class="btn">啟動動畫</button>
+          <div class="slider-help">看 kernel 怎麼滑過整張圖</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Input · Kernel</div>
+        <div class="conv-canvas-wrap">
+          <canvas id="srcCanvas" class="demo-canvas" width="200" height="200"></canvas>
+          <div class="img-row" id="imgPicker"></div>
+          <div class="kernel-section">
+            <div class="panel-label" style="margin-bottom: 10px; justify-content: center;">3×3 Kernel(可以改數字)</div>
+            <div class="kernel-grid" id="kernelGrid"></div>
+            <div class="btn-row">
+              <button class="btn tiny term" data-term="kernel-identity" data-preset="identity">Identity</button>
+              <button class="btn tiny term" data-term="kernel-edge" data-preset="edge">Edge</button>
+              <button class="btn tiny term" data-term="kernel-sobel-x" data-preset="sobel-x">Sobel X</button>
+              <button class="btn tiny term" data-term="kernel-sobel-y" data-preset="sobel-y">Sobel Y</button>
+              <button class="btn tiny term" data-term="kernel-blur" data-preset="blur">Blur</button>
+              <button class="btn tiny term" data-term="kernel-sharpen" data-preset="sharpen">Sharpen</button>
+              <button class="btn tiny term" data-term="kernel-emboss" data-preset="emboss">Emboss</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">Output Feature Map</div>
+        <div class="conv-canvas-wrap">
+          <canvas id="dstCanvas" class="demo-canvas" width="200" height="200"></canvas>
+          <div class="info-grid" style="width: 100%;">
+            <div class="info-cell"><div class="info-cell-label">Input</div><div class="info-cell-value">200 × 200</div></div>
+            <div class="info-cell"><div class="info-cell-label">Output</div><div class="info-cell-value" id="convOutShape">200 × 200</div></div>
+            <div class="info-cell"><div class="info-cell-label">Kernel</div><div class="info-cell-value">3 × 3</div></div>
+            <div class="info-cell"><div class="info-cell-label">Params</div><div class="info-cell-value">9 + 1</div></div>
+          </div>
+          <div style="margin-top: 14px; padding: 12px 14px; background: rgba(74, 135, 168, 0.1); border: 1.5px dashed var(--blue); border-radius: 6px; width: 100%;">
+            <div style="font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-bottom: 4px;">PyTorch:</div>
+            <div id="convPyCode" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink);">nn.Conv2d(1, 1, kernel_size=3, stride=1, padding=1)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼這個 demo 重要</div>
+      Sobel 是經典邊緣偵測器,人類花了幾十年才想出來。但 CNN 訓練幾個 epoch 後,
+      <strong>第一層的 kernel 自己就會長得很像 Sobel</strong>。
+      這就是 deep learning 的魔法 — 把 feature engineering 交給模型自己做。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://cs231n.github.io/convolutional-networks/" target="_blank" rel="noopener"><span>Stanford CS231n — Convolutional Networks</span><span class="resource-tag">課程</span></a>
+        <a class="resource-link" href="https://setosa.io/ev/image-kernels/" target="_blank" rel="noopener"><span>Image Kernels Explained Visually</span><span class="resource-tag">視覺化</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html" target="_blank" rel="noopener"><span>PyTorch nn.Conv2d 文件</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1409.1556" target="_blank" rel="noopener"><span>VGG paper (Simonyan & Zisserman, 2014)</span><span class="resource-tag">論文</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TAB 2: POOLING ========== -->
+  <section class="tab-content" id="tab-pool">
+    <h2 class="section-title">池化的真相</h2>
+    <span class="section-tag">Pooling Demystified</span>
+    <p class="section-desc">
+      <span class="term" data-term="pooling">Pooling</span>(池化)是 CNN 裡很常見的操作,但很多人只會背「會降低尺寸」,不知道為什麼。
+      下面動手調 window 看 <span class="term" data-term="maxpool">Max</span>、<span class="term" data-term="avgpool">Avg</span>、<span class="term" data-term="gap">GAP</span> 的差別。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">為什麼要 Pool?</div>
+        <div class="concept-card-text">三個原因:減少計算量、增加 <span class="term" data-term="receptive">receptive field</span>、提供平移不變性。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">Max Pooling</div>
+        <div class="concept-card-text">取窗戶內最大值。<strong>最常用</strong>,因為保留最強特徵。「有偵測到 = 訊號強 = 數值大」。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Avg Pooling</div>
+        <div class="concept-card-text">取平均。比較少用於分類,但用在 GAP(全部平均成一個值)取代 FC 層。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">趨勢</div>
+        <div class="concept-card-text">現代很多模型用 <span class="term" data-term="strideconv">stride=2 conv</span> 取代 pooling — 一樣下採樣但有可學參數。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Pool Type</span></div>
+          <div class="btn-row" style="margin-top: 0; justify-content: flex-start;">
+            <button class="btn tiny" data-pool="max" data-active="true" id="poolMax">Max</button>
+            <button class="btn tiny" data-pool="avg" id="poolAvg">Average</button>
+            <button class="btn tiny" data-pool="gap" id="poolGap">Global Avg</button>
+          </div>
+          <div class="slider-help">不同 pool 對相同資料會輸出不同結果</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Window Size</span><span class="val" id="poolWinVal">2 × 2</span></div>
+          <input type="range" id="poolWin" min="2" max="4" value="2" step="1">
+          <div class="slider-help">2×2 是最常用的設定</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Input(滑鼠移上看哪些 cell 在同一個 window)</div>
+        <div id="poolInputViz" style="display: flex; justify-content: center; padding: 12px;"></div>
+        <div style="text-align: center; margin-top: 8px; font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink-soft);">
+          <span class="chip yellow">黃色</span> = 當前 window · <span class="chip red">紅色</span> = 被選中的 max
+        </div>
+        <button class="btn" id="poolShuffle" style="margin-top: 12px; width: 100%;">🎲 換一組數字</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">Output</div>
+        <div id="poolOutputViz" style="display: flex; justify-content: center; padding: 12px;"></div>
+
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">Input shape</div><div class="info-cell-value" id="poolInShape">6 × 6</div></div>
+          <div class="info-cell"><div class="info-cell-label">Output shape</div><div class="info-cell-value" id="poolOutShape">3 × 3</div></div>
+          <div class="info-cell"><div class="info-cell-label">Operation</div><div class="info-cell-value" id="poolOp">Max</div></div>
+          <div class="info-cell"><div class="info-cell-label">Params</div><div class="info-cell-value">0</div></div>
+        </div>
+
+        <div style="margin-top: 14px; padding: 12px 14px; background: rgba(74, 135, 168, 0.1); border: 1.5px dashed var(--blue); border-radius: 6px;">
+          <div style="font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-bottom: 4px;">PyTorch:</div>
+          <div id="poolPyCode" style="font-family: 'JetBrains Mono', monospace; font-size: 11px;">nn.MaxPool2d(2, 2)</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">三種 Pool 的視覺對比</h3>
+    <div class="panel">
+      <p style="margin-bottom: 12px; color: var(--ink-soft); font-size: 14px;">
+        同一張 feature map,經過三種 pool 後輸出的差別:
+      </p>
+      <div id="poolCompareViz" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+        <!-- injected by JS -->
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">三種 pool 在做什麼</div>
+      <strong>Max pool</strong> 會保留最尖銳的特徵(像把音量調到只聽最大聲那一刻)。
+      <strong>Avg pool</strong> 比較平滑,不會強調極值。
+      <strong>GAP</strong> 直接把整張圖壓成一個值,通常用在最後一層當分類前的「打包」。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html" target="_blank" rel="noopener"><span>PyTorch MaxPool2d 文件</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.AdaptiveAvgPool2d.html" target="_blank" rel="noopener"><span>AdaptiveAvgPool2d (做 GAP 用的)</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1412.6806" target="_blank" rel="noopener"><span>Striving for Simplicity (用 stride conv 取代 pool)</span><span class="resource-tag">論文</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TAB 3: ACTIVATION ========== -->
+  <section class="tab-content" id="tab-activation">
+    <h2 class="section-title">激活函數動物園</h2>
+    <span class="section-tag">Activation Function Zoo</span>
+    <p class="section-desc">
+      神經網路一定要有<span class="term" data-term="activation">激活函數</span>(activation function),不然多少層都跟一層一樣
+      (因為線性的疊加還是線性)。下面看每個 activation 長什麼樣子、套用在實際資料上會發生什麼。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">為什麼要非線性?</div>
+        <div class="concept-card-text">沒有非線性,N 層 linear 化簡後跟 1 層 linear 一樣。神經網路的能力來自<strong>非線性的疊加</strong>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">ReLU 為什麼紅</div>
+        <div class="concept-card-text">計算超快(就是 if x&lt;0 return 0),不會像 sigmoid 那樣<span class="term" data-term="saturate">飽和</span>導致梯度消失。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Dying ReLU</div>
+        <div class="concept-card-text">ReLU 負半邊梯度為 0,如果某個 neuron 一直輸出負值就「死了」。<span class="term" data-term="leaky">Leaky ReLU</span> 解決這個。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">現代趨勢</div>
+        <div class="concept-card-text">YOLOv4 用 <span class="term" data-term="mish">Mish</span>,YOLOv5+、Transformer 用 <span class="term" data-term="silu">SiLU/Swish</span>。都是 ReLU 的平滑版本。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="slider-wrap">
+        <div class="slider-label" style="margin-bottom: 8px;"><span>選擇激活函數(可以多選比較)</span></div>
+        <div class="btn-row" style="justify-content: flex-start; margin-top: 0;">
+          <button class="btn tiny" data-act="relu" data-active="true">ReLU</button>
+          <button class="btn tiny" data-act="leaky">Leaky ReLU</button>
+          <button class="btn tiny" data-act="sigmoid">Sigmoid</button>
+          <button class="btn tiny" data-act="tanh">Tanh</button>
+          <button class="btn tiny" data-act="silu">SiLU / Swish</button>
+          <button class="btn tiny" data-act="mish">Mish</button>
+          <button class="btn tiny" data-act="gelu">GELU</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">函數曲線(input → output)</div>
+        <svg id="actPlot" class="plot" viewBox="0 0 400 320" width="100%"></svg>
+        <div style="text-align: center; margin-top: 12px; font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink-soft);">
+          x 軸 = input · y 軸 = output · 滑鼠移上去看數值
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">梯度曲線(d/dx output)</div>
+        <svg id="actGradPlot" class="plot" viewBox="0 0 400 320" width="100%"></svg>
+        <div style="text-align: center; margin-top: 12px; font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink-soft);">
+          這就是 backward 時會用到的東西<br>
+          <span class="chip red">梯度 ≈ 0</span> = 訓練不動了
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">套用在 feature map 上</h3>
+    <div class="panel">
+      <div style="display: grid; grid-template-columns: 1fr 80px 1fr; gap: 16px; align-items: center;">
+        <div>
+          <div style="font-family: 'Caveat', cursive; font-size: 18px; margin-bottom: 8px;">Input(模擬 Conv 輸出)</div>
+          <canvas id="actInput" class="demo-canvas" width="200" height="200" style="width: 100%; max-width: 240px;"></canvas>
+        </div>
+        <div style="text-align: center; font-family: 'Caveat', cursive; font-size: 32px; color: var(--red);">→</div>
+        <div>
+          <div style="font-family: 'Caveat', cursive; font-size: 18px; margin-bottom: 8px;" id="actOutLabel">After ReLU</div>
+          <canvas id="actOutput" class="demo-canvas" width="200" height="200" style="width: 100%; max-width: 240px;"></canvas>
+        </div>
+      </div>
+      <div style="margin-top: 16px; padding: 12px; background: rgba(232, 197, 71, 0.15); border-radius: 6px; font-family: 'Patrick Hand', cursive; font-size: 14px;">
+        💡 ReLU 把所有負值砍成 0,你會看到輸出的「黑色區域」變多 — 那些就是「死掉」的 neuron。
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">怎麼選 activation</div>
+      新模型多半從 <strong>SiLU 或 GELU</strong> 開始(YOLOv5+, Transformer 都用)。
+      老模型用 ReLU 沒問題,簡單快速。<br>
+      碰到 dying ReLU 改 <strong>Leaky ReLU</strong>。<br>
+      Sigmoid / Tanh 現在只用在<strong>輸出層</strong>(分類機率、座標限制),很少當隱藏層 activation 了。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1908.08681" target="_blank" rel="noopener"><span>Mish: A Self Regularized Non-Monotonic Activation</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1710.05941" target="_blank" rel="noopener"><span>Searching for Activation Functions (Swish/SiLU)</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/nn.html#non-linear-activations-weighted-sum-nonlinearity" target="_blank" rel="noopener"><span>PyTorch 所有 activation 文件</span><span class="resource-tag">官方</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TAB 4: BATCH NORM ========== -->
+  <section class="tab-content" id="tab-bn">
+    <h2 class="section-title">Batch Normalization</h2>
+    <span class="section-tag">標準化的力量</span>
+    <p class="section-desc">
+      <span class="term" data-term="bn">Batch Normalization</span> 是現代 CNN 標配,但很多人講不清楚它在做什麼。
+      簡單說:<strong>把每一層的輸出分布「拉回來」</strong>,讓訓練更穩定。
+      下面實際看一看資料分布怎麼被改變。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">公式</div>
+        <div class="concept-card-text">y = γ × (x − μ) / σ + β,把分布壓成 mean=0、std=1,再用 γ、β 去學適合的分布。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼有用</div>
+        <div class="concept-card-text">讓每層收到的 input 分布穩定,可以用更大的 <span class="term" data-term="lr">learning rate</span>,訓練快很多。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Train vs Eval</div>
+        <div class="concept-card-text"><strong>新手雷</strong>:Train 用當前 batch 的 μ、σ,Eval 用訓練時的<span class="term" data-term="runningstats">移動平均</span>。忘記切換會慘。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">放在哪</div>
+        <div class="concept-card-text">通常順序:<strong>Conv → BN → ReLU</strong>。有 BN 之後幾乎不用 Dropout 了。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>原始分布的偏移 (shift)</span><span class="val" id="bnShiftVal">0.0</span></div>
+          <input type="range" id="bnShift" min="-30" max="30" value="0" step="1">
+          <div class="slider-help">模擬某層 conv 輸出的 mean 偏離 0</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>原始分布的尺度 (scale)</span><span class="val" id="bnScaleVal">1.0</span></div>
+          <input type="range" id="bnScale" min="2" max="40" value="10" step="1">
+          <div class="slider-help">模擬某層 conv 輸出的 std 偏離 1</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>學到的 γ(scale)</span><span class="val" id="bnGammaVal">1.0</span></div>
+          <input type="range" id="bnGamma" min="2" max="30" value="10" step="1">
+          <div class="slider-help">BN 之後再 scale 多少</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>學到的 β(shift)</span><span class="val" id="bnBetaVal">0.0</span></div>
+          <input type="range" id="bnBeta" min="-20" max="20" value="0" step="1">
+          <div class="slider-help">BN 之後再 shift 多少</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">原始分布(BN 之前)</div>
+        <svg id="bnPlot1" class="plot" viewBox="0 0 400 280" width="100%"></svg>
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">Mean</div><div class="info-cell-value" id="bnMean1">0.0</div></div>
+          <div class="info-cell"><div class="info-cell-label">Std</div><div class="info-cell-value" id="bnStd1">1.0</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">BN 後分布</div>
+        <svg id="bnPlot2" class="plot" viewBox="0 0 400 280" width="100%"></svg>
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">Mean</div><div class="info-cell-value" id="bnMean2">0.0</div></div>
+          <div class="info-cell"><div class="info-cell-label">Std</div><div class="info-cell-value" id="bnStd2">1.0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼要有 γ 和 β</div>
+      只把分布壓到 mean=0, std=1 太死板,可能反而削弱模型表達力。所以 BN 多加兩個<strong>可學參數</strong> γ, β,
+      讓模型自己決定「這層的 activation 適合哪種分布」 — 等於最佳化標準化的程度。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1502.03167" target="_blank" rel="noopener"><span>BN 原論文 (Ioffe & Szegedy, 2015)</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.BatchNorm2d.html" target="_blank" rel="noopener"><span>PyTorch BatchNorm2d 文件</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1805.11604" target="_blank" rel="noopener"><span>How Does Batch Norm Help Optimization?</span><span class="resource-tag">分析</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TAB 5: FC vs Conv ========== -->
+  <section class="tab-content" id="tab-fc">
+    <h2 class="section-title">FC vs Conv</h2>
+    <span class="section-tag">為什麼不直接用全連接?</span>
+    <p class="section-desc">
+      你可能會問:既然<span class="term" data-term="fc">全連接層 (FC)</span>能擬合任何函數,為什麼還要 Conv?
+      答案是<strong>參數量</strong>。下面動態算給你看,有圖有真相。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">FC 是什麼</div>
+        <div class="concept-card-text">每個輸入都連到每個輸出,參數量 = input × output。彈性最大,但...也最貴。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">Conv 為什麼省</div>
+        <div class="concept-card-text">同一個 kernel 在整張圖<span class="term" data-term="weightshare">共用權重</span>。一個 3×3 kernel = 9 個參數,不管圖多大。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Inductive Bias</div>
+        <div class="concept-card-text">Conv 內建「相鄰像素相關、特徵位置不變」的假設。FC 完全沒有,要從頭學起。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">現代用法</div>
+        <div class="concept-card-text">Conv 提取特徵 → GAP 壓縮 → FC 做最後分類。FC 通常只剩最後一層。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>輸入圖片尺寸</span><span class="val" id="fcSizeVal">224 × 224</span></div>
+          <input type="range" id="fcSize" min="32" max="512" value="224" step="16">
+          <div class="slider-help">越大張參數爆炸越誇張</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>輸出 channel(下一層神經元)</span><span class="val" id="fcOutVal">1024</span></div>
+          <input type="range" id="fcOut" min="64" max="2048" value="1024" step="64">
+          <div class="slider-help">FC 是 neuron 數;Conv 是 filter 數</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">參數量大比拼</div>
+      <div id="fcCompare" style="margin-top: 12px;">
+        <div class="compare-bar">
+          <div class="compare-bar-label" style="color: var(--red);">FC 全連接</div>
+          <div class="compare-bar-fill"><div class="compare-bar-inner" id="fcFcBar" style="width: 100%; background: var(--red);"></div></div>
+        </div>
+        <div class="compare-bar">
+          <div class="compare-bar-label" style="color: var(--green);">Conv 3×3</div>
+          <div class="compare-bar-fill"><div class="compare-bar-inner" id="fcConvBar" style="width: 5%; background: var(--green);"></div></div>
+        </div>
+        <div class="compare-bar">
+          <div class="compare-bar-label" style="color: var(--blue);">Conv 1×1</div>
+          <div class="compare-bar-fill"><div class="compare-bar-inner" id="fcConv1Bar" style="width: 1%; background: var(--blue);"></div></div>
+        </div>
+      </div>
+
+      <div class="info-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 16px;">
+        <div class="info-cell">
+          <div class="info-cell-label">FC 參數量</div>
+          <div class="info-cell-value" id="fcFcCount" style="color: var(--red);">—</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-cell-label">Conv 3×3 參數量</div>
+          <div class="info-cell-value" id="fcConvCount" style="color: var(--green);">—</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-cell-label">Conv 1×1 參數量</div>
+          <div class="info-cell-value" id="fcConv1Count" style="color: var(--blue);">—</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px; padding: 14px 16px; background: rgba(200, 85, 61, 0.1); border-radius: 6px; font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink);">
+        💀 FC 比 Conv 多 <span id="fcRatio" style="color: var(--red); font-weight: 700;">—</span> 倍參數!所以根本不用考慮直接接 FC。
+      </div>
+    </div>
+
+    <h3 class="subhead">為什麼 Conv 可以共用權重</h3>
+    <div class="panel">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center;">
+        <div>
+          <div style="font-family: 'Caveat', cursive; font-size: 22px; color: var(--red); margin-bottom: 12px;">FC 的世界觀</div>
+          <p style="font-size: 14px; line-height: 1.7; color: var(--ink-soft);">
+            把整張圖攤平成一條線。左上角的像素跟右下角的像素「平等」 — 這完全違背圖片的本質
+            (相鄰像素其實相關性很高)。所以 FC 要從零學起「什麼是空間關係」。
+          </p>
+        </div>
+        <div>
+          <div style="font-family: 'Caveat', cursive; font-size: 22px; color: var(--green); margin-bottom: 12px;">Conv 的世界觀</div>
+          <p style="font-size: 14px; line-height: 1.7; color: var(--ink-soft);">
+            「貓的眼睛」這種 pattern 不管出現在圖的哪個位置,都應該被同一個偵測器抓到。
+            所以一個 kernel 滑遍整張圖 = 共用權重 = 大幅減少參數。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">參數量的概念</div>
+      <strong>FC 隨輸入尺寸線性增長</strong> — 224×224 比 32×32 多 49 倍參數。
+      <strong>Conv 跟輸入尺寸無關</strong> — 一個 3×3 kernel 永遠 9 個參數,不管圖多大。
+      這就是為什麼現代視覺模型幾乎全是 Conv,FC 只剩最後一層當分類器。
+    </div>
+  </section>
+
+  <!-- ========== TAB 6: GRADIENT VANISHING ========== -->
+  <section class="tab-content" id="tab-gradient">
+    <h2 class="section-title">梯度消失現場</h2>
+    <span class="section-tag">Gradient Vanishing</span>
+    <p class="section-desc">
+      拉動下面的 slider 改變網路深度,看左右兩種架構的<span class="term" data-term="gradient">梯度</span>怎麼變化。
+      <strong>亮 = 梯度大(學得到)</strong>,
+      <strong>暗 = 梯度接近 0(學不到)</strong>。
+      還可以按 ⏵ 看反向傳播的動畫。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">梯度是什麼</div>
+        <div class="concept-card-text">告訴模型「往哪個方向調參數能讓 loss 變小」。沒有梯度 = 不知道怎麼學。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼會消失</div>
+        <div class="concept-card-text">梯度從輸出層往輸入層傳時,每經過一層就<span class="term" data-term="chainrule">乘一次</span>偏導數。如果都小於 1,深層網路前幾層的梯度會指數衰減到 0。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">ResNet 怎麼解</div>
+        <div class="concept-card-text">加 <span class="term" data-term="skip">skip connection</span> 讓梯度有捷徑可走,backward 時不會被中間層稀釋掉。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">影響有多大</div>
+        <div class="concept-card-text">原本 30 層就訓練不起來,有 ResNet 後可以堆到 152 層、甚至 <span class="term" data-term="resnet1k">1000 層</span>還能訓練。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>網路深度</span><span class="val" id="depthVal">20 layers</span></div>
+          <input type="range" id="depthSlider" min="5" max="60" value="20" step="1">
+          <div class="slider-help">越深問題越明顯</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>每層的梯度因子</span><span class="val" id="factorVal">0.50</span></div>
+          <input type="range" id="factorSlider" min="20" max="95" value="50" step="5">
+          <div class="slider-help">每層的偏導數平均大小;越小衰減越快</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>反向傳播動畫</span></div>
+          <button class="btn primary" id="bpAnim">⏵ 播放動畫</button>
+          <div class="slider-help">看梯度從輸出層怎麼一路衰減</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Plain CNN(沒有 skip connection)</div>
+        <div class="layers-vis" id="plainLayers"></div>
+        <div class="layers-label">
+          <span>← input 前面</span>
+          <span>output 後面 →</span>
+        </div>
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">第一層梯度</div><div class="info-cell-value" id="plainFirst">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">有效層數</div><div class="info-cell-value" id="plainEff">—</div></div>
+        </div>
+        <div style="margin-top: 12px; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint);">
+          ※ 有效層 = 梯度 &gt; 0.01 的層
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">ResNet(有 skip connection)</div>
+        <div class="layers-vis" id="resLayers"></div>
+        <div class="layers-label">
+          <span>← input 前面</span>
+          <span>output 後面 →</span>
+        </div>
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">第一層梯度</div><div class="info-cell-value" id="resFirst">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">有效層數</div><div class="info-cell-value" id="resEff">—</div></div>
+        </div>
+        <div style="margin-top: 12px; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint);">
+          ※ 每個 residual block 都有 +1 的 identity path
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">數學直覺</div>
+      梯度 ≈ factor^depth。當 factor &lt; 1 且 depth 大,結果指數衰減到 0。<br>
+      ResNet 的 skip connection 讓<span class="term" data-term="backprop">反向傳播</span>多一條 +1 的路徑,等於 (factor + 1)^depth。
+      <strong>這就是為什麼可以蓋到 152 層還訓練得起來。</strong>
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1512.03385" target="_blank" rel="noopener"><span>ResNet 原論文 (He et al., 2015)</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1603.05027" target="_blank" rel="noopener"><span>Pre-activation ResNet v2</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://www.youtube.com/watch?v=GWt6Fu05voI" target="_blank" rel="noopener"><span>Yannic Kilcher: ResNet 解讀</span><span class="resource-tag">影片</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TAB 7: RESIDUAL ========== -->
+  <section class="tab-content" id="tab-residual">
+    <h2 class="section-title">殘差學習現場</h2>
+    <span class="section-tag">y = F(x) + x · 一個 +x 改變世界</span>
+    <p class="section-desc">
+      <span class="term" data-term="residual">殘差學習</span>是 ResNet 的核心發明。
+      下面動態看 F(x)、x、F(x)+x 三個訊號的關係,以及為什麼這條 skip connection 能解決梯度消失。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">原本的學法</div>
+        <div class="concept-card-text">直接學 H(x) — 從 input 學到 output 該長什麼樣。難。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">殘差的學法</div>
+        <div class="concept-card-text">學 F(x) = H(x) − x — 只學「需要在 x 上加什麼東西」。簡單多了。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">退化解</div>
+        <div class="concept-card-text">如果這層沒用,模型可以把 F(x) 學成 0,等於 identity。<strong>不會比原本差</strong>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">梯度高速公路</div>
+        <div class="concept-card-text">∂(F+x)/∂x = ∂F/∂x + 1。那個 +1 保證梯度永遠有東西傳回去。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>F(x) 學到的「殘差」幅度</span><span class="val" id="resAmpVal">0.5</span></div>
+          <input type="range" id="resAmp" min="0" max="100" value="50" step="5">
+          <div class="slider-help">模擬 conv block 學到的調整量</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>F(x) 的相位偏移</span><span class="val" id="resPhaseVal">0</span></div>
+          <input type="range" id="resPhase" min="0" max="100" value="20" step="5">
+          <div class="slider-help">調整 F(x) 的形狀</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">三條訊號的疊加</div>
+        <svg id="resPlot" class="plot" viewBox="0 0 500 320" width="100%"></svg>
+        <div style="display: flex; justify-content: center; gap: 16px; margin-top: 14px; font-family: 'Patrick Hand', cursive; font-size: 14px;">
+          <span><span style="display: inline-block; width: 14px; height: 4px; background: var(--blue); vertical-align: middle;"></span> input x</span>
+          <span><span style="display: inline-block; width: 14px; height: 4px; background: var(--orange); vertical-align: middle;"></span> F(x)</span>
+          <span><span style="display: inline-block; width: 14px; height: 4px; background: var(--red); vertical-align: middle;"></span> F(x) + x</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">Residual Block 結構</div>
+        <div class="resblock-svg-wrap">
+          <svg viewBox="0 0 360 380" width="100%" style="max-width: 320px;">
+            <defs>
+              <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                <path d="M0,0 L8,5 L0,10 Z" fill="#3d2f1f"/>
+              </marker>
+            </defs>
+            <!-- input -->
+            <rect x="130" y="15" width="100" height="40" rx="6" fill="#fff8e7" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="40" text-anchor="middle" font-family="Caveat, cursive" font-size="20" fill="#3d2f1f" font-weight="700">x (input)</text>
+            <!-- arrow down to conv1 -->
+            <line x1="180" y1="55" x2="180" y2="80" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- conv1 -->
+            <rect x="120" y="85" width="120" height="32" rx="6" fill="#6a9b5e" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="106" text-anchor="middle" font-family="Kalam, cursive" font-size="14" fill="#fff" font-weight="700">Conv 3×3</text>
+            <!-- arrow -->
+            <line x1="180" y1="117" x2="180" y2="125" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- bn -->
+            <rect x="120" y="130" width="120" height="28" rx="6" fill="#e8c547" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="149" text-anchor="middle" font-family="Kalam, cursive" font-size="13" fill="#3d2f1f" font-weight="700">BN + ReLU</text>
+            <line x1="180" y1="158" x2="180" y2="166" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- conv2 -->
+            <rect x="120" y="171" width="120" height="32" rx="6" fill="#6a9b5e" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="192" text-anchor="middle" font-family="Kalam, cursive" font-size="14" fill="#fff" font-weight="700">Conv 3×3</text>
+            <line x1="180" y1="203" x2="180" y2="211" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- bn2 -->
+            <rect x="120" y="216" width="120" height="28" rx="6" fill="#e8c547" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="234" text-anchor="middle" font-family="Kalam, cursive" font-size="13" fill="#3d2f1f" font-weight="700">BN</text>
+            <line x1="180" y1="244" x2="180" y2="265" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- skip connection arc -->
+            <path d="M 110 35 Q 30 35, 30 280 Q 30 290, 60 290" fill="none" stroke="#c8553d" stroke-width="3" stroke-dasharray="6,4"/>
+            <text x="50" y="170" font-family="Caveat, cursive" font-size="22" fill="#c8553d" font-weight="700" transform="rotate(-90 50 170)">skip connection</text>
+            <line x1="60" y1="290" x2="160" y2="290" stroke="#c8553d" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arr)"/>
+            <!-- plus circle -->
+            <circle cx="180" cy="290" r="20" fill="#fff8e7" stroke="#3d2f1f" stroke-width="2.5"/>
+            <text x="180" y="297" text-anchor="middle" font-family="Caveat, cursive" font-size="28" fill="#c8553d" font-weight="700">+</text>
+            <line x1="180" y1="310" x2="180" y2="328" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- ReLU final -->
+            <rect x="120" y="333" width="120" height="28" rx="6" fill="#e8c547" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="352" text-anchor="middle" font-family="Kalam, cursive" font-size="13" fill="#3d2f1f" font-weight="700">ReLU</text>
+            <!-- F(x) label -->
+            <text x="260" y="160" font-family="Caveat, cursive" font-size="22" fill="#e89c50" font-weight="700">F(x)</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">梯度視覺化:傳統 vs Residual</h3>
+    <div class="panel">
+      <p style="font-size: 14px; color: var(--ink-soft); margin-bottom: 16px;">
+        想像 backward 時梯度從輸出層往前傳。傳統 CNN 每經過一層就衰減,ResNet 因為有 +1 的 identity path,梯度可以直接「跳過」中間層。
+      </p>
+      <svg id="resGradFlow" class="plot" viewBox="0 0 800 240" width="100%" style="background: #fff;"></svg>
+      <button class="btn primary" id="resAnimBtn" style="margin-top: 14px; width: 100%;">⏵ 播放梯度反向傳播動畫</button>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼這個發明這麼重要</div>
+      ResNet 之前,網路深度被卡在 30 層左右(再深 train loss 反而變高)。
+      ResNet 之後,<strong>深度不再是問題</strong>。Transformer、Diffusion、所有 LLM 也都用這個技巧。
+      可以說 deep learning 從 2015 年之後的發展都是建立在這條看似簡單的 +x 路徑上。
+    </div>
+  </section>
+
+  <!-- ========== TAB 8: YOLO ========== -->
+  <section class="tab-content" id="tab-yolo">
+    <h2 class="section-title">YOLO 怎麼看圖</h2>
+    <span class="section-tag">Anchor & Grid Visualizer</span>
+    <p class="section-desc">
+      看 <span class="term" data-term="yolo">YOLO</span> 怎麼把圖切成 <span class="term" data-term="grid">grid</span>,以及
+      <span class="term" data-term="anchorbased">anchor-based</span> vs <span class="term" data-term="anchorfree">anchor-free</span> 的差別。
+      點擊任一格子,可以看到該格子負責預測哪些 box。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">Detection 是什麼</div>
+        <div class="concept-card-text">不只說「圖裡有貓」,還要說「貓在這個位置,框出來」。比分類難很多。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼用 grid</div>
+        <div class="concept-card-text">YOLO 把圖切 SxS 格,每格<span class="term" data-term="responsible">「負責」</span>預測中心落在它裡面的物件。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">什麼是 anchor</div>
+        <div class="concept-card-text">預先定義的 box 形狀(瘦高、寬扁、正方形)。<span class="term" data-term="kmeans">用 K-means</span> 算出來。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">Anchor-free 的勝利</div>
+        <div class="concept-card-text"><span class="term" data-term="v8anchor">YOLOv8</span> 改回 anchor-free,簡化 pipeline,不用為每個資料集設計 anchor。</div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 16px;">
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="anchor">Anchor-based</button>
+        <button class="mode-btn" data-mode="free">Anchor-free</button>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Grid Size (S × S)</span><span class="val" id="gridVal">7 × 7</span></div>
+          <input type="range" id="gridSlider" min="5" max="19" value="7" step="2">
+          <div class="slider-help">越細越能偵測小物件,計算量越大</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Anchors per cell</span><span class="val" id="anchorVal">3</span></div>
+          <input type="range" id="anchorSlider" min="1" max="5" value="3" step="1">
+          <div class="slider-help">YOLOv3 用 3,YOLOv2 用 5</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>顯示 NMS 視覺化</span></div>
+          <button class="btn" id="nmsBtn">顯示重複偵測 + NMS</button>
+          <div class="slider-help"><span class="term" data-term="nms">NMS</span> 把重複的 box 去掉</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Image · Grid · Anchors</div>
+        <div class="conv-canvas-wrap">
+          <canvas id="yoloCanvas" class="demo-canvas" width="500" height="500" style="cursor: crosshair;"></canvas>
+          <div style="font-size: 13px; color: var(--ink-soft); font-family: 'Patrick Hand', cursive; line-height: 1.6; text-align: center;">
+            <span class="chip" style="background: var(--orange); color: var(--ink);">橘色框</span> = ground truth · 
+            <span class="chip green">綠色高亮</span> = 負責的格子 · 
+            <span class="chip blue">藍色</span> = 你選的格子
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Output Tensor 結構</div>
+        <div style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink); line-height: 1.9;">
+          <div>Grid: <span style="color: var(--red); font-weight: 700;" id="gridInfo">7 × 7</span></div>
+          <div>Anchors per cell: <span style="color: var(--red); font-weight: 700;" id="anchorInfo">3</span></div>
+          <div>Per-anchor outputs: <span style="color: var(--red); font-weight: 700;" id="perAnchor">5 + 20 = 25</span></div>
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1.5px dashed var(--line);">
+            <span style="color: var(--ink-faint);">Output shape:</span>
+          </div>
+          <div style="font-size: 22px; color: var(--red); margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-weight: 700;" id="outputShape">(B, 7, 7, 75)</div>
+          <div style="font-size: 12px; color: var(--ink-faint); margin-top: 6px; font-family: 'Patrick Hand', cursive; line-height: 1.5;">
+            B = batch size · 75 = 3 anchors × (5 + 20)<br>
+            5 = (x, y, w, h, confidence) · 20 = 類別數
+          </div>
+        </div>
+        <div style="margin-top: 24px;">
+          <div class="panel-label" style="margin-bottom: 10px;">Selected cell info</div>
+          <div id="cellInfo" style="font-family: 'Kalam', cursive; font-size: 13px; color: var(--ink); padding: 14px; background: rgba(255, 255, 255, 0.6); border: 1.5px dashed var(--line); border-radius: 6px; min-height: 100px; line-height: 1.7;">
+            點擊左邊任一格子來看 detail
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">IoU 跟 NMS 是什麼?</h3>
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">IoU 視覺化(拖預測框)</div>
+        <canvas id="iouCanvas" class="demo-canvas" width="320" height="320" style="cursor: move; display: block; margin: 0 auto;"></canvas>
+        <div class="info-grid" style="margin-top: 14px;">
+          <div class="info-cell"><div class="info-cell-label">IoU</div><div class="info-cell-value" id="iouVal">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">Status</div><div class="info-cell-value" id="iouStatus" style="color: var(--green);">—</div></div>
+        </div>
+        <div style="margin-top: 10px; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-soft);">
+          拖藍色預測框,看跟橘色 ground truth 的 <span class="term" data-term="iou">IoU</span>。IoU &gt; 0.5 算 match。
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">NMS 流程</div>
+        <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink); line-height: 1.8;">
+          模型常會對同一物件預測很多個 box(因為附近的格子都會輸出)。<span class="term" data-term="nms">NMS (Non-Maximum Suppression)</span> 的步驟:
+        </p>
+        <ol style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink); line-height: 1.9; margin-left: 20px; margin-top: 8px;">
+          <li>把所有預測按 confidence 排序(高 → 低)</li>
+          <li>取最高 confidence 的 box 當「保留」</li>
+          <li>所有跟它 IoU &gt; 閾值(0.5)的 box 都丟掉</li>
+          <li>從剩下的 box 重複 2~3,直到沒了</li>
+        </ol>
+        <p style="font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-top: 12px;">
+          📌 後處理步驟,不是模型本身的一部分。但每個 detector 都需要。
+        </p>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼 anchor-free 變主流</div>
+      Anchor-based 需要先用 K-means 對訓練集算出最佳 anchor 形狀,
+      不同任務的最佳 anchor 完全不同(行人偵測 vs 衛星照片偵測 vs 人臉偵測)。
+      Anchor-free 把這負擔丟給模型自己學,簡化 pipeline。<strong>YOLOv8 之後幾乎都改用這個。</strong>
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1506.02640" target="_blank" rel="noopener"><span>YOLOv1 — You Only Look Once</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1804.02767" target="_blank" rel="noopener"><span>YOLOv3 — Multi-scale</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/2004.10934" target="_blank" rel="noopener"><span>YOLOv4 — Bag of Freebies</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://docs.ultralytics.com" target="_blank" rel="noopener"><span>Ultralytics Docs (v5/v8)</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://www.youtube.com/watch?v=n9_XyCGr-MI" target="_blank" rel="noopener"><span>Aladdin Persson: YOLOv1 from scratch</span><span class="resource-tag">影片</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TAB 9: BUILDER ========== -->
+  <section class="tab-content" id="tab-builder">
+    <h2 class="section-title">PyTorch 模型組裝</h2>
+    <span class="section-tag">拖拉式 nn.Module Builder</span>
+    <p class="section-desc">
+      拖左邊的元件到中間組成一個 CNN,右邊會即時生成對應的 <span class="term" data-term="pytorch">PyTorch</span> code。
+      預設 input 是 (B, 3, 224, 224)。可以滑鼠移到 layer 名稱看每種 layer 在做什麼。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">nn.Module</div>
+        <div class="concept-card-text">PyTorch 所有模型的基礎類別。<span class="term" data-term="nnmodule">繼承它就能管理參數、自動 backward</span>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">__init__ vs forward</div>
+        <div class="concept-card-text">__init__ 定義「有什麼零件」,forward 定義「怎麼組起來」。<span class="term" data-term="forward">backward 完全自動</span>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">看 shape 變化</div>
+        <div class="concept-card-text">每加一層,<span class="term" data-term="shape">看 channel 跟空間尺寸怎麼變</span>。經典 pattern 是「channel 翻倍,空間減半」。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">參數量 = 模型大小</div>
+        <div class="concept-card-text">下面會即時算總參數量,隨時看模型多大。Conv 比 FC 省非常多。</div>
+      </div>
+    </div>
+
+    <div class="builder-grid">
+      <div>
+        <div class="panel-label">零件庫(可拖拉或點擊)</div>
+        <div class="palette" id="palette">
+          <div class="palette-item term" draggable="true" data-type="Conv" data-term="layer-conv">
+            <div class="palette-item-label">Conv2d 3×3</div>
+            <div class="palette-item-hint">+padding=1, stride=1</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="ConvDown" data-term="layer-convdown">
+            <div class="palette-item-label">Conv2d 3×3 ↓</div>
+            <div class="palette-item-hint">stride=2 下採樣</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="BN" data-term="layer-bn">
+            <div class="palette-item-label">BatchNorm2d</div>
+            <div class="palette-item-hint">穩定訓練</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="ReLU" data-term="layer-relu">
+            <div class="palette-item-label">ReLU</div>
+            <div class="palette-item-hint">非線性激活</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="MaxPool" data-term="layer-maxpool">
+            <div class="palette-item-label">MaxPool 2×2</div>
+            <div class="palette-item-hint">空間下採樣</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="GAP" data-term="layer-gap">
+            <div class="palette-item-label">GlobalAvgPool</div>
+            <div class="palette-item-hint">壓成 1×1</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="Flatten" data-term="layer-flatten">
+            <div class="palette-item-label">Flatten</div>
+            <div class="palette-item-hint">攤平成 1D</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="FC" data-term="layer-fc">
+            <div class="palette-item-label">Linear (FC)</div>
+            <div class="palette-item-hint">最後分類</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="Residual" data-term="layer-residual">
+            <div class="palette-item-label">Residual Block</div>
+            <div class="palette-item-hint">含 skip connection</div>
+          </div>
+        </div>
+        <button id="clearBtn" class="btn danger" style="margin-top: 14px; width: 100%;">Clear All</button>
+        <button id="presetBtn" class="btn primary" style="margin-top: 8px; width: 100%;">Load ResNet-mini</button>
+        <button id="presetVgg" class="btn" style="margin-top: 8px; width: 100%;">Load VGG-style</button>
+      </div>
+
+      <div>
+        <div class="panel-label">你的模型 · 每層 shape</div>
+        <div class="stack" id="stack">
+          <div class="stack-empty">把左邊的 layer 拖過來,或直接點擊</div>
+        </div>
+        <div class="params-display">
+          <span>Total parameters</span>
+          <span class="value" id="paramCount">0</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-label">PyTorch Code(自動生成)</div>
+        <pre class="code-output" id="codeOutput"><span class="com"># 拖 layer 進來,code 會自動生成</span></pre>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">觀察 shape 變化</div>
+      每加一層,看 channel 數和空間尺寸怎麼變。經典 CNN 的 pattern 是「<strong>channel 翻倍,空間減半</strong>」 —
+      這樣每層的計算量大致守恆,而且高階特徵需要更多 channel 來表達。<br><br>
+      試試看搭一個 Conv → BN → ReLU 的 block,然後加 MaxPool,觀察 shape 變化。
+      或直接點「Load ResNet-mini」看一個簡化版的 ResNet 長什麼樣。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://docs.pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html" target="_blank" rel="noopener"><span>PyTorch — Neural Networks Tutorial</span><span class="resource-tag">教學</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/nn.html" target="_blank" rel="noopener"><span>torch.nn — All Layers Reference</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py" target="_blank" rel="noopener"><span>Official ResNet Source Code</span><span class="resource-tag">原始碼</span></a>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="term-tip" id="termTip"></div>
+
+<script>
+// ============ TERM DEFINITIONS ============
+const termDefs = {
+  example: { title: 'Hover Demo', body: '對,就是這樣!像這樣有紅色波浪底線的字,把滑鼠移過去就會跳出說明。' },
+  kernel: { title: 'Kernel / Filter', body: 'CNN 裡的小窗戶,通常 3×3 或 5×5。滑過整張圖做點積運算,輸出 feature map。每個 kernel 偵測一種特徵(邊、紋理、色塊等)。', link: { text: 'PyTorch Conv2d 文件', url: 'https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html' } },
+  cnn: { title: 'CNN — Convolutional Neural Network', body: '使用卷積層當主要組件的神經網路。三大特性:Local Connectivity、Weight Sharing、Hierarchical Features。', link: { text: 'CS231n 教材', url: 'https://cs231n.github.io/convolutional-networks/' } },
+  learn: { title: 'Learning by Backpropagation', body: 'kernel 的數值不是預先設定,而是訓練時透過反向傳播計算梯度,慢慢調整出來的。訓練完的第一層 kernel 通常會自己長成像 Sobel 那樣的邊緣偵測器。' },
+  receptive: { title: 'Receptive Field 感受野', body: '輸出某個位置「看得到」原圖多大範圍。一層 3×3 感受野 = 3×3,兩層疊起來 = 5×5。深層 neuron 的感受野會涵蓋整張圖,所以才能識別「物件」這種大範圍的東西。' },
+  dotproduct: { title: '點積 (Dot Product)', body: '對應位置相乘再全部加起來。例如 [1,2,3] · [4,5,6] = 1×4 + 2×5 + 3×6 = 32。卷積就是讓 kernel 跟圖片的每個 3×3 區塊都做一次點積。' },
+  vgg: { title: 'VGG (2014)', body: '牛津大學提出的 CNN,證明「很多個 3×3 conv 疊起來」效果比少數幾個大 kernel 好。從此 3×3 成為共識。', link: { text: 'VGG 論文', url: 'https://arxiv.org/abs/1409.1556' } },
+  featuremap: { title: 'Feature Map', body: '一個 kernel 滑過整張圖後輸出的 2D 矩陣。如果該 kernel 是「橫線偵測器」,那 feature map 上亮的地方就代表「這裡有橫線」。' },
+  padding: { title: 'Padding', body: '在輸入圖周圍補一圈(或多圈)0。這樣卷積後尺寸不會變小。padding=1 + kernel=3 + stride=1 → "same" padding。' },
+  stride: { title: 'Stride', body: 'kernel 一次滑幾格。stride=1 是逐格滑,stride=2 等於每兩格取一個 → 輸出尺寸減半。' },
+  pooling: { title: 'Pooling 池化', body: 'CNN 中的下採樣操作。在固定窗戶內取代表值(最大、平均),減少 H/W 尺寸。沒有可學參數,純粹是固定的運算。' },
+  maxpool: { title: 'Max Pooling', body: '取窗戶內最大值。最常用,因為保留最強特徵 — 「有偵測到 = 數值大 = 留下」。', link: { text: 'PyTorch MaxPool2d', url: 'https://docs.pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html' } },
+  avgpool: { title: 'Average Pooling', body: '取窗戶內平均值。比較少用於分類,但 GAP 用平均做最後壓縮。' },
+  gap: { title: 'Global Average Pooling', body: '把整張 feature map 取平均,輸出一個值。用來取代 FC 層,省非常多參數。ResNet 之後標配。' },
+  strideconv: { title: 'Stride Conv 取代 Pool', body: '用 stride=2 的 conv 同樣可以下採樣,而且有可學參數,讓模型自己決定怎麼壓縮。Darknet-53、現代架構多用這個。' },
+  activation: { title: '激活函數', body: '在每層 conv/linear 之後加的非線性函數。沒有它,N 層神經網路化簡後等於 1 層 — 完全無用。' },
+  saturate: { title: '飽和 (Saturation)', body: '某些函數(如 sigmoid)在輸入很大或很小時,輸出會「卡住」在 0 或 1 附近,梯度變成接近 0 → 訓練不動。ReLU 解決了這個問題。' },
+  leaky: { title: 'Leaky ReLU', body: 'ReLU 的負半邊改成 0.01×x 而不是 0,這樣負值也有梯度,不會 dying。' },
+  mish: { title: 'Mish', body: 'f(x) = x × tanh(softplus(x))。平滑、非單調的 activation,YOLOv4 用這個。', link: { text: 'Mish 論文', url: 'https://arxiv.org/abs/1908.08681' } },
+  silu: { title: 'SiLU / Swish', body: 'f(x) = x × sigmoid(x)。平滑版本的 ReLU,YOLOv5+、Transformer 都用。也叫 Swish。', link: { text: 'Swish 論文', url: 'https://arxiv.org/abs/1710.05941' } },
+  bn: { title: 'Batch Normalization', body: '把每個 batch 的 activation 標準化:y = γ×(x−μ)/σ + β。加速收斂、穩定訓練、可用更大 LR。', link: { text: 'BN 論文', url: 'https://arxiv.org/abs/1502.03167' } },
+  lr: { title: 'Learning Rate', body: '梯度下降的步伐大小。太大會震盪,太小訓練很慢。BN 讓你可以用更大的 LR。' },
+  runningstats: { title: 'Running Statistics', body: 'BN 在訓練時用當前 batch 的 mean/std,但會同時記錄 momentum 移動平均。eval 時用這個 running stats,因為單筆推論沒有 batch 可以算。' },
+  fc: { title: 'Fully Connected Layer', body: '每個輸入連接到每個輸出。最簡單但參數最多的層。現代 CNN 多半只在最後一層當分類器。', link: { text: 'PyTorch nn.Linear', url: 'https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html' } },
+  weightshare: { title: '權重共享 (Weight Sharing)', body: '同一個 kernel 的參數被應用到圖片的每個位置。一個 3×3 kernel 永遠只有 9 個參數,不管圖多大。' },
+  gradient: { title: '梯度 (Gradient)', body: 'loss 對某個參數的偏導數,告訴模型「往哪個方向、多大幅度調這個參數會讓 loss 變小」。梯度為 0 = 完全卡住。' },
+  chainrule: { title: '連鎖律 (Chain Rule)', body: '微積分基本工具。如果 y = f(g(x)),那 dy/dx = f\'(g(x)) × g\'(x)。深度學習的反向傳播就是不斷用這個規則把梯度傳回去。' },
+  skip: { title: 'Skip Connection', body: '把 input 直接加到 output 的捷徑路徑:y = F(x) + x。讓梯度可以「不經過中間運算」就傳回前面層,解決梯度消失。', link: { text: 'ResNet 論文', url: 'https://arxiv.org/abs/1512.03385' } },
+  resnet1k: { title: 'ResNet 1000+ 層', body: 'Pre-activation ResNet (v2) 改良後可以訓練到 1000+ 層還不會劣化。', link: { text: 'ResNet v2', url: 'https://arxiv.org/abs/1603.05027' } },
+  backprop: { title: '反向傳播 (Backpropagation)', body: '從 loss 開始,用連鎖律一路把梯度算回每個參數。PyTorch 的 .backward() 自動幫你做。' },
+  residual: { title: '殘差學習', body: '不直接學 H(x),而是學 F(x) = H(x) − x。再用 y = F(x) + x 還原。這樣模型只要學「該加什麼」,簡單很多。' },
+  yolo: { title: 'YOLO — You Only Look Once', body: '即時物件偵測模型的開山之作 (2016)。把整張圖切成 grid,一次預測所有物件。', link: { text: 'YOLOv1 論文', url: 'https://arxiv.org/abs/1506.02640' } },
+  grid: { title: 'Grid Cell', body: 'YOLO 把輸入圖切成 SxS 格子。每個格子負責預測中心落在它裡面的物件。' },
+  anchorbased: { title: 'Anchor-based', body: '預先定義幾個常見的 box 形狀,模型只要預測「相對 anchor 的調整量」。比直接預測絕對座標好學。' },
+  anchorfree: { title: 'Anchor-free', body: '不用預設 anchor,直接預測物件中心 + 寬高。簡化 pipeline,YOLOv8 改回這個方式。' },
+  responsible: { title: '"負責" 的格子', body: '物件中心落在哪個 grid cell,該 cell 就「負責」預測這個物件。其他 cell 預測背景。' },
+  kmeans: { title: 'K-means Clustering', body: '非監督分群演算法。YOLOv2+ 訓練前會跑 k-means 在 GT box 上,找出 K 個最有代表性的 box 形狀當 anchor。' },
+  v8anchor: { title: 'YOLOv8 Anchor-free', body: '2023 Ultralytics 發布的 YOLOv8 拋棄 anchor,改用 anchor-free + decoupled head。', link: { text: 'Ultralytics Docs', url: 'https://docs.ultralytics.com' } },
+  iou: { title: 'IoU — Intersection over Union', body: '兩個 box 的「交集面積 / 聯集面積」。是衡量兩個 box 重疊程度的標準指標,範圍 0~1。IoU > 0.5 通常算 match。' },
+  nms: { title: 'NMS — Non-Maximum Suppression', body: '後處理步驟。模型常會對同一物件預測多個 box,NMS 取 confidence 最高的,把跟它 IoU 太高的其他 box 丟掉。' },
+  pytorch: { title: 'PyTorch', body: 'Meta 開發的深度學習框架。動態圖、Pythonic、debug 友善,目前主流。', link: { text: 'pytorch.org', url: 'https://pytorch.org' } },
+  nnmodule: { title: 'nn.Module', body: 'PyTorch 所有模型的基底類別。繼承它就能自動管理 parameters、用 .cuda() 搬 GPU、用 .train()/.eval() 切換模式。', link: { text: 'nn.Module 文件', url: 'https://docs.pytorch.org/docs/stable/generated/torch.nn.Module.html' } },
+  forward: { title: 'forward()', body: '定義模型怎麼處理輸入。寫好 forward,backward 就完全自動 — PyTorch 用 autograd 自動建 graph。' },
+  shape: { title: 'Tensor Shape', body: 'PyTorch 圖像 tensor 的 shape 是 (Batch, Channel, Height, Width)。Debug 時印 shape 是最常用的招。' },
+  // Kernels
+  'kernel-identity': { title: 'Identity Kernel', body: '中心 = 1,其他 = 0。輸出等於輸入,什麼都不改。是 baseline 對照組。' },
+  'kernel-edge': { title: 'Edge Detection', body: '中心 8,周圍 -1。任何方向的邊緣都會被增強。' },
+  'kernel-sobel-x': { title: 'Sobel X', body: '左 -1, 中 0, 右 +1。偵測「水平方向上的亮度變化」=「垂直邊緣」。' },
+  'kernel-sobel-y': { title: 'Sobel Y', body: '上 -1, 中 0, 下 +1。偵測「垂直方向上的亮度變化」=「水平邊緣」。' },
+  'kernel-blur': { title: 'Box Blur', body: '所有位置都是 1/9。等於取 3×3 區域的平均,讓圖變模糊。' },
+  'kernel-sharpen': { title: 'Sharpen', body: '中心 5,十字 -1。把每個像素跟周圍的差異「放大」,讓邊緣看起來更清楚。' },
+  'kernel-emboss': { title: 'Emboss', body: '不對稱 kernel(左上負,右下正)。產生「光從左上照」的浮雕效果。' },
+  // Layers
+  'layer-conv': { title: 'Conv2d 3×3', body: '最常用的卷積層,kernel 3×3, padding=1, stride=1,輸出 H/W 跟輸入一樣。', link: { text: 'PyTorch 文件', url: 'https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html' } },
+  'layer-convdown': { title: 'Conv2d 3×3 with stride=2', body: '用 stride=2 做下採樣的卷積。輸出 H/W 減半。現代架構用這個取代 MaxPool。' },
+  'layer-bn': { title: 'Batch Normalization', body: '對每個 batch 做標準化:y = γ × (x - μ) / σ + β。', link: { text: 'BN 論文', url: 'https://arxiv.org/abs/1502.03167' } },
+  'layer-relu': { title: 'ReLU', body: 'f(x) = max(0, x)。最常用的激活函數,計算超快。' },
+  'layer-maxpool': { title: 'MaxPool 2×2', body: '取 2×2 區域內最大值,H/W 減半。' },
+  'layer-gap': { title: 'Global Average Pooling', body: '把每個 channel 整張 feature map 取平均,輸出 (B, C, 1, 1)。取代 FC 層用。' },
+  'layer-flatten': { title: 'Flatten', body: '把 (B, C, H, W) 攤平成 (B, C×H×W)。' },
+  'layer-fc': { title: 'Fully Connected (Linear)', body: '每個輸入連接到每個輸出。預設輸出 1000(模擬 ImageNet)。', link: { text: 'nn.Linear', url: 'https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html' } },
+  'layer-residual': { title: 'Residual Block', body: 'ResNet 核心:Conv → BN → ReLU → Conv → BN → 加上 input → ReLU。' }
+};
+
+// ============ TOOLTIP SYSTEM ============
+const tip = document.getElementById('termTip');
+let tipTimeout = null;
+
+function showTip(el) {
+  const key = el.getAttribute('data-term');
+  const def = termDefs[key];
+  if (!def) return;
+  let html = `<div class="tip-title">${def.title}</div><div>${def.body}</div>`;
+  if (def.link) html += `<div class="tip-link">→ <a href="${def.link.url}" target="_blank" rel="noopener">${def.link.text}</a></div>`;
+  tip.innerHTML = html;
+  tip.classList.add('visible');
+  const rect = el.getBoundingClientRect();
+  const tipRect = tip.getBoundingClientRect();
+  const padding = 8;
+  let left = rect.left;
+  let top = rect.bottom + padding;
+  if (left + tipRect.width > window.innerWidth - padding) left = window.innerWidth - tipRect.width - padding;
+  if (left < padding) left = padding;
+  if (top + tipRect.height > window.innerHeight - padding) top = rect.top - tipRect.height - padding;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+function hideTip() { tipTimeout = setTimeout(() => tip.classList.remove('visible'), 200); }
+function attachTooltips() {
+  document.querySelectorAll('[data-term]').forEach(el => {
+    el.addEventListener('mouseenter', () => { if (tipTimeout) { clearTimeout(tipTimeout); tipTimeout = null; } showTip(el); });
+    el.addEventListener('mouseleave', hideTip);
+  });
+  tip.addEventListener('mouseenter', () => { if (tipTimeout) { clearTimeout(tipTimeout); tipTimeout = null; } });
+  tip.addEventListener('mouseleave', hideTip);
+}
+attachTooltips();
+
+// ============ TAB SWITCHING ============
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+
+// ============ TAB 1: CONVOLUTION ============
+const srcCanvas = document.getElementById('srcCanvas');
+const dstCanvas = document.getElementById('dstCanvas');
+const srcCtx = srcCanvas.getContext('2d');
+const dstCtx = dstCanvas.getContext('2d');
+const SIZE = 200;
+let convStride = 1;
+let convPad = 1;
+let rfAnimating = false;
+let rfFrame = 0;
+
+function generateImage(type) {
+  const img = srcCtx.createImageData(SIZE, SIZE);
+  const data = img.data;
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const i = (y * SIZE + x) * 4;
+      let v = 0;
+      const cx = x - SIZE/2, cy = y - SIZE/2;
+      const r = Math.sqrt(cx*cx + cy*cy);
+      if (type === 'circles') v = Math.abs(Math.sin(r * 0.15)) * 200 + 30;
+      else if (type === 'gradient') v = (x + y) / (2 * SIZE) * 255;
+      else if (type === 'checker') { const cs = 25; v = ((Math.floor(x/cs) + Math.floor(y/cs)) % 2) * 200 + 30; }
+      else if (type === 'face') {
+        v = 240; if (r < 75) v = 200;
+        const e1 = Math.sqrt((cx+25)**2 + (cy+15)**2);
+        const e2 = Math.sqrt((cx-25)**2 + (cy+15)**2);
+        if (e1 < 8 || e2 < 8) v = 60;
+        if (cy > 20 && cy < 30 && Math.abs(cx) < 25) v = 60;
+      } else if (type === 'lines') v = (Math.sin(x * 0.3) + Math.sin(y * 0.3)) * 60 + 128;
+      data[i] = data[i+1] = data[i+2] = v;
+      data[i+3] = 255;
+    }
+  }
+  srcCtx.putImageData(img, 0, 0);
+  applyConvolution();
+}
+
+const imgTypes = ['face', 'circles', 'checker', 'gradient', 'lines'];
+const imgPicker = document.getElementById('imgPicker');
+imgTypes.forEach((type, idx) => {
+  const thumb = document.createElement('canvas');
+  thumb.width = 44; thumb.height = 44;
+  thumb.className = 'img-thumb' + (idx === 0 ? ' active' : '');
+  const tctx = thumb.getContext('2d');
+  for (let y = 0; y < 44; y++) {
+    for (let x = 0; x < 44; x++) {
+      const cx = x - 22, cy = y - 22;
+      const r = Math.sqrt(cx*cx + cy*cy);
+      let v = 240;
+      if (type === 'circles') v = Math.abs(Math.sin(r * 0.5)) * 200 + 30;
+      else if (type === 'gradient') v = (x + y) / 88 * 255;
+      else if (type === 'checker') v = ((Math.floor(x/6) + Math.floor(y/6)) % 2) * 200 + 30;
+      else if (type === 'face') {
+        v = 240; if (r < 16) v = 200;
+        if (Math.sqrt((cx+5)**2 + (cy+3)**2) < 2) v = 60;
+        if (Math.sqrt((cx-5)**2 + (cy+3)**2) < 2) v = 60;
+        if (cy > 5 && cy < 7 && Math.abs(cx) < 5) v = 60;
+      } else if (type === 'lines') v = (Math.sin(x * 0.5) + Math.sin(y * 0.5)) * 60 + 128;
+      tctx.fillStyle = `rgb(${v|0},${v|0},${v|0})`;
+      tctx.fillRect(x, y, 1, 1);
+    }
+  }
+  thumb.addEventListener('click', () => {
+    document.querySelectorAll('.img-thumb').forEach(t => t.classList.remove('active'));
+    thumb.classList.add('active');
+    generateImage(type);
+  });
+  imgPicker.appendChild(thumb);
+});
+
+const kernelGrid = document.getElementById('kernelGrid');
+let kernel = [0, 0, 0, 0, 1, 0, 0, 0, 0];
+
+function buildKernelInputs() {
+  kernelGrid.innerHTML = '';
+  kernel.forEach((v, i) => {
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.className = 'kernel-cell';
+    inp.value = (Math.round(v * 100) / 100).toString();
+    inp.step = '0.1';
+    inp.addEventListener('input', (e) => {
+      kernel[i] = parseFloat(e.target.value) || 0;
+      applyConvolution();
+    });
+    kernelGrid.appendChild(inp);
+  });
+}
+
+const presets = {
+  identity: [0,0,0,0,1,0,0,0,0],
+  edge: [-1,-1,-1,-1,8,-1,-1,-1,-1],
+  'sobel-x': [-1,0,1,-2,0,2,-1,0,1],
+  'sobel-y': [-1,-2,-1,0,0,0,1,2,1],
+  blur: [1/9,1/9,1/9,1/9,1/9,1/9,1/9,1/9,1/9],
+  sharpen: [0,-1,0,-1,5,-1,0,-1,0],
+  emboss: [-2,-1,0,-1,1,1,0,1,2]
+};
+document.querySelectorAll('[data-preset]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    kernel = [...presets[btn.dataset.preset]];
+    buildKernelInputs();
+    applyConvolution();
+  });
+});
+
+function applyConvolution() {
+  const src = srcCtx.getImageData(0, 0, SIZE, SIZE);
+  const outW = Math.floor((SIZE + 2*convPad - 3) / convStride) + 1;
+  const outH = outW;
+  // We render output back to 200x200 by scaling
+  const dst = dstCtx.createImageData(SIZE, SIZE);
+
+  // Clear dst
+  for (let i = 0; i < dst.data.length; i += 4) {
+    dst.data[i] = dst.data[i+1] = dst.data[i+2] = 30;
+    dst.data[i+3] = 255;
+  }
+
+  // Compute output (in output coords)
+  const output = new Float32Array(outW * outH);
+  for (let oy = 0; oy < outH; oy++) {
+    for (let ox = 0; ox < outW; ox++) {
+      let sum = 0;
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          const sy = oy * convStride + ky + (1 - convPad);
+          const sx = ox * convStride + kx + (1 - convPad);
+          if (sx < 0 || sx >= SIZE || sy < 0 || sy >= SIZE) continue;
+          const si = (sy * SIZE + sx) * 4;
+          const ki = (ky + 1) * 3 + (kx + 1);
+          sum += src.data[si] * kernel[ki];
+        }
+      }
+      output[oy * outW + ox] = sum;
+    }
+  }
+
+  // Render output scaled up to SIZE×SIZE
+  const scale = SIZE / outW;
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const oy = Math.min(outH - 1, Math.floor(y / scale));
+      const ox = Math.min(outW - 1, Math.floor(x / scale));
+      let v = output[oy * outW + ox];
+      v = Math.max(0, Math.min(255, v));
+      const di = (y * SIZE + x) * 4;
+      dst.data[di] = dst.data[di+1] = dst.data[di+2] = v;
+      dst.data[di+3] = 255;
+    }
+  }
+  dstCtx.putImageData(dst, 0, 0);
+
+  // Update output shape
+  document.getElementById('convOutShape').textContent = `${outW} × ${outH}`;
+  document.getElementById('convPyCode').textContent = `nn.Conv2d(1, 1, kernel_size=3, stride=${convStride}, padding=${convPad})`;
+
+  // Draw RF overlay if animating
+  if (rfAnimating) drawRF();
+}
+
+function drawRF() {
+  // Overlay the kernel position on src canvas
+  const src = srcCtx.getImageData(0, 0, SIZE, SIZE);
+  srcCtx.putImageData(src, 0, 0);
+  const outW = Math.floor((SIZE + 2*convPad - 3) / convStride) + 1;
+  const totalCells = outW * outW;
+  const idx = rfFrame % totalCells;
+  const oy = Math.floor(idx / outW);
+  const ox = idx % outW;
+  // Compute window position in input coords
+  const sx = ox * convStride - convPad;
+  const sy = oy * convStride - convPad;
+  // Draw rectangle
+  srcCtx.strokeStyle = '#c8553d';
+  srcCtx.lineWidth = 3;
+  srcCtx.strokeRect(sx, sy, 3, 3);
+  srcCtx.fillStyle = 'rgba(232, 197, 71, 0.3)';
+  srcCtx.fillRect(sx, sy, 3, 3);
+}
+
+function rfLoop() {
+  if (!rfAnimating) return;
+  rfFrame++;
+  applyConvolution();
+  setTimeout(rfLoop, 50);
+}
+
+document.getElementById('rfToggle').addEventListener('click', (e) => {
+  rfAnimating = !rfAnimating;
+  e.target.textContent = rfAnimating ? '⏸ 停止' : '啟動動畫';
+  if (rfAnimating) rfLoop();
+  else applyConvolution();
+});
+
+document.getElementById('convStride').addEventListener('input', (e) => {
+  convStride = parseInt(e.target.value);
+  document.getElementById('convStrideVal').textContent = convStride;
+  applyConvolution();
+});
+document.getElementById('convPad').addEventListener('input', (e) => {
+  convPad = parseInt(e.target.value);
+  document.getElementById('convPadVal').textContent = convPad;
+  applyConvolution();
+});
+
+buildKernelInputs();
+generateImage('face');
+
+// ============ TAB 2: POOLING ============
+let poolType = 'max';
+let poolWin = 2;
+let poolData = [];
+
+function genPoolData() {
+  poolData = [];
+  for (let i = 0; i < 6 * 6; i++) {
+    poolData.push(Math.floor(Math.random() * 9) + 1);
+  }
+}
+genPoolData();
+
+function renderPool() {
+  const isGAP = poolType === 'gap';
+  const win = isGAP ? 6 : poolWin;
+  const inSize = 6;
+  const outSize = isGAP ? 1 : Math.floor(inSize / win);
+
+  // Update labels
+  document.getElementById('poolWinVal').textContent = isGAP ? '全部' : `${poolWin} × ${poolWin}`;
+  document.getElementById('poolInShape').textContent = `${inSize} × ${inSize}`;
+  document.getElementById('poolOutShape').textContent = isGAP ? '1 × 1' : `${outSize} × ${outSize}`;
+  document.getElementById('poolOp').textContent = poolType === 'max' ? 'Max' : poolType === 'avg' ? 'Average' : 'GAP';
+  document.getElementById('poolPyCode').textContent =
+    poolType === 'max' ? `nn.MaxPool2d(${poolWin}, ${poolWin})` :
+    poolType === 'avg' ? `nn.AvgPool2d(${poolWin}, ${poolWin})` :
+    `nn.AdaptiveAvgPool2d(1)`;
+
+  // Render input
+  const inputViz = document.getElementById('poolInputViz');
+  inputViz.innerHTML = '';
+  const inputGrid = document.createElement('div');
+  inputGrid.className = 'pool-grid';
+  inputGrid.style.gridTemplateColumns = `repeat(${inSize}, 1fr)`;
+  for (let y = 0; y < inSize; y++) {
+    for (let x = 0; x < inSize; x++) {
+      const cell = document.createElement('div');
+      cell.className = 'pool-cell';
+      cell.textContent = poolData[y * inSize + x];
+      cell.dataset.x = x;
+      cell.dataset.y = y;
+      inputGrid.appendChild(cell);
+    }
+  }
+  inputViz.appendChild(inputGrid);
+
+  // Render output
+  const outputViz = document.getElementById('poolOutputViz');
+  outputViz.innerHTML = '';
+  const outputGrid = document.createElement('div');
+  outputGrid.className = 'pool-grid';
+  outputGrid.style.gridTemplateColumns = `repeat(${outSize}, 1fr)`;
+  outputGrid.style.gap = '6px';
+
+  for (let oy = 0; oy < outSize; oy++) {
+    for (let ox = 0; ox < outSize; ox++) {
+      // Compute pool
+      let vals = [];
+      for (let dy = 0; dy < win; dy++) {
+        for (let dx = 0; dx < win; dx++) {
+          const ix = ox * win + dx;
+          const iy = oy * win + dy;
+          if (ix < inSize && iy < inSize) vals.push(poolData[iy * inSize + ix]);
+        }
+      }
+      let result;
+      if (poolType === 'max') result = Math.max(...vals);
+      else result = (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1);
+
+      const cell = document.createElement('div');
+      cell.className = 'pool-output-cell';
+      cell.textContent = result;
+      cell.dataset.ox = ox;
+      cell.dataset.oy = oy;
+      cell.style.cursor = 'pointer';
+      cell.addEventListener('mouseenter', () => highlightPoolWindow(ox, oy, win));
+      cell.addEventListener('mouseleave', () => clearPoolHighlight());
+      outputGrid.appendChild(cell);
+    }
+  }
+  outputViz.appendChild(outputGrid);
+
+  // Render comparison
+  renderPoolCompare();
+}
+
+function highlightPoolWindow(ox, oy, win) {
+  document.querySelectorAll('.pool-cell').forEach(c => {
+    const x = parseInt(c.dataset.x), y = parseInt(c.dataset.y);
+    if (x >= ox * win && x < (ox + 1) * win && y >= oy * win && y < (oy + 1) * win) {
+      c.classList.add('in-window');
+    }
+  });
+  // Mark max if max pool
+  if (poolType === 'max') {
+    let maxVal = -Infinity, maxX = 0, maxY = 0;
+    for (let dy = 0; dy < win; dy++) {
+      for (let dx = 0; dx < win; dx++) {
+        const ix = ox * win + dx, iy = oy * win + dy;
+        if (ix < 6 && iy < 6) {
+          const v = poolData[iy * 6 + ix];
+          if (v > maxVal) { maxVal = v; maxX = ix; maxY = iy; }
+        }
+      }
+    }
+    document.querySelectorAll('.pool-cell').forEach(c => {
+      if (parseInt(c.dataset.x) === maxX && parseInt(c.dataset.y) === maxY) c.classList.add('is-max');
+    });
+  }
+}
+function clearPoolHighlight() {
+  document.querySelectorAll('.pool-cell').forEach(c => {
+    c.classList.remove('in-window', 'is-max');
+  });
+}
+
+function renderPoolCompare() {
+  const compareDiv = document.getElementById('poolCompareViz');
+  compareDiv.innerHTML = '';
+  const types = [
+    { name: 'Max Pool 2×2', op: 'max', win: 2, color: 'var(--red)' },
+    { name: 'Avg Pool 2×2', op: 'avg', win: 2, color: 'var(--blue)' },
+    { name: 'Global Avg Pool', op: 'gap', win: 6, color: 'var(--green)' }
+  ];
+
+  types.forEach(t => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'background: rgba(255,255,255,0.5); border: 1.5px dashed var(--line); border-radius: 6px; padding: 12px; text-align: center;';
+    wrap.innerHTML = `<div style="font-family: 'Caveat', cursive; font-size: 18px; color: ${t.color}; font-weight: 700; margin-bottom: 8px;">${t.name}</div>`;
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display: grid; gap: 3px; background: var(--ink); padding: 3px; border-radius: 4px; width: fit-content; margin: 0 auto; border: 2px solid var(--ink);';
+
+    const win = t.win;
+    const outSize = t.op === 'gap' ? 1 : Math.floor(6 / win);
+    grid.style.gridTemplateColumns = `repeat(${outSize}, 1fr)`;
+
+    for (let oy = 0; oy < outSize; oy++) {
+      for (let ox = 0; ox < outSize; ox++) {
+        let vals = [];
+        for (let dy = 0; dy < win; dy++) {
+          for (let dx = 0; dx < win; dx++) {
+            const ix = ox * win + dx, iy = oy * win + dy;
+            if (ix < 6 && iy < 6) vals.push(poolData[iy * 6 + ix]);
+          }
+        }
+        let result;
+        if (t.op === 'max') result = Math.max(...vals);
+        else result = (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(1);
+
+        const cell = document.createElement('div');
+        cell.style.cssText = `width: 38px; height: 38px; background: ${t.color}; color: white; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono'; font-size: 13px; font-weight: 700; border-radius: 2px;`;
+        cell.textContent = result;
+        grid.appendChild(cell);
+      }
+    }
+    wrap.appendChild(grid);
+    compareDiv.appendChild(wrap);
+  });
+}
+
+document.querySelectorAll('[data-pool]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-pool]').forEach(b => b.dataset.active = 'false');
+    btn.dataset.active = 'true';
+    poolType = btn.dataset.pool;
+    renderPool();
+  });
+});
+document.getElementById('poolWin').addEventListener('input', (e) => {
+  poolWin = parseInt(e.target.value);
+  renderPool();
+});
+document.getElementById('poolShuffle').addEventListener('click', () => {
+  genPoolData();
+  renderPool();
+});
+renderPool();
+
+
+// ============ TAB 3: ACTIVATION FUNCTIONS ============
+const activations = {
+  relu: { name: 'ReLU', f: x => Math.max(0, x), df: x => x > 0 ? 1 : 0, color: '#c8553d' },
+  leaky: { name: 'Leaky ReLU', f: x => x > 0 ? x : 0.1 * x, df: x => x > 0 ? 1 : 0.1, color: '#e89c50' },
+  sigmoid: { name: 'Sigmoid', f: x => 1 / (1 + Math.exp(-x)), df: x => { const s = 1 / (1 + Math.exp(-x)); return s * (1 - s); }, color: '#4a87a8' },
+  tanh: { name: 'Tanh', f: x => Math.tanh(x), df: x => 1 - Math.tanh(x) ** 2, color: '#8b6db5' },
+  silu: { name: 'SiLU/Swish', f: x => x / (1 + Math.exp(-x)), df: x => { const s = 1/(1+Math.exp(-x)); return s + x*s*(1-s); }, color: '#6a9b5e' },
+  mish: { name: 'Mish', f: x => x * Math.tanh(Math.log(1 + Math.exp(Math.min(x, 30)))), df: x => { const sp = Math.log(1+Math.exp(Math.min(x,30))); const ts = Math.tanh(sp); const sech2 = 1 - ts*ts; const sigmoid = 1/(1+Math.exp(-x)); return ts + x*sech2*sigmoid; }, color: '#d68fa8' },
+  gelu: { name: 'GELU', f: x => 0.5 * x * (1 + Math.tanh(Math.sqrt(2/Math.PI) * (x + 0.044715 * x*x*x))), df: x => { const c = Math.sqrt(2/Math.PI); const inner = c*(x + 0.044715*x*x*x); const t = Math.tanh(inner); const sech2 = 1 - t*t; return 0.5*(1+t) + 0.5*x*sech2*c*(1 + 3*0.044715*x*x); }, color: '#3d2f1f' }
+};
+
+let activeActs = new Set(['relu']);
+
+function plotActivations() {
+  const fnPlot = document.getElementById('actPlot');
+  const gradPlot = document.getElementById('actGradPlot');
+  const W = 400, H = 320;
+  const xMin = -5, xMax = 5;
+  const yMin = -2, yMax = 5;
+
+  function plot(svg, fnKey) {
+    svg.innerHTML = '';
+    // Background grid
+    const grid = '<g stroke="rgba(180,150,90,0.2)" stroke-width="1">';
+    let g = grid;
+    for (let x = -4; x <= 4; x++) {
+      const px = ((x - xMin) / (xMax - xMin)) * W;
+      g += `<line x1="${px}" y1="20" x2="${px}" y2="${H-30}"/>`;
+    }
+    for (let y = -1; y <= 4; y++) {
+      const py = H - 30 - ((y - yMin) / (yMax - yMin)) * (H - 50);
+      g += `<line x1="0" y1="${py}" x2="${W}" y2="${py}"/>`;
+    }
+    g += '</g>';
+
+    // Axes
+    const ax = ((0 - xMin) / (xMax - xMin)) * W;
+    const ay = H - 30 - ((0 - yMin) / (yMax - yMin)) * (H - 50);
+    g += `<line x1="${ax}" y1="20" x2="${ax}" y2="${H-30}" stroke="#3d2f1f" stroke-width="1.5"/>`;
+    g += `<line x1="0" y1="${ay}" x2="${W}" y2="${ay}" stroke="#3d2f1f" stroke-width="1.5"/>`;
+
+    // X labels
+    for (let x = -4; x <= 4; x += 2) {
+      if (x === 0) continue;
+      const px = ((x - xMin) / (xMax - xMin)) * W;
+      g += `<text x="${px}" y="${H-12}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#6b5942">${x}</text>`;
+    }
+    // Y labels
+    for (let y = -1; y <= 4; y++) {
+      if (y === 0) continue;
+      const py = H - 30 - ((y - yMin) / (yMax - yMin)) * (H - 50);
+      g += `<text x="${ax - 4}" y="${py + 3}" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="#6b5942">${y}</text>`;
+    }
+
+    // Curves
+    activeActs.forEach(actKey => {
+      const a = activations[actKey];
+      const fn = fnKey === 'f' ? a.f : a.df;
+      let path = '';
+      const N = 200;
+      for (let i = 0; i <= N; i++) {
+        const x = xMin + (i / N) * (xMax - xMin);
+        let y = fn(x);
+        y = Math.max(yMin - 1, Math.min(yMax + 1, y));
+        const px = (i / N) * W;
+        const py = H - 30 - ((y - yMin) / (yMax - yMin)) * (H - 50);
+        path += (i === 0 ? 'M' : ' L') + ` ${px.toFixed(1)} ${py.toFixed(1)}`;
+      }
+      g += `<path d="${path}" stroke="${a.color}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+      // Label
+      const labelY = 28 + Array.from(activeActs).indexOf(actKey) * 18;
+      g += `<rect x="${W - 110}" y="${labelY - 12}" width="100" height="16" rx="3" fill="${a.color}" opacity="0.9"/>`;
+      g += `<text x="${W - 60}" y="${labelY}" text-anchor="middle" font-family="Kalam" font-size="11" fill="white" font-weight="700">${a.name}</text>`;
+    });
+
+    svg.innerHTML = g;
+  }
+
+  plot(fnPlot, 'f');
+  plot(gradPlot, 'df');
+
+  // Apply to image
+  applyActivationToImage();
+}
+
+function applyActivationToImage() {
+  const inCv = document.getElementById('actInput');
+  const outCv = document.getElementById('actOutput');
+  if (!inCv || !outCv) return;
+  const inCtx = inCv.getContext('2d');
+  const outCtx = outCv.getContext('2d');
+  const SZ = 200;
+
+  // Generate a "feature map" with positive and negative regions
+  const inImg = inCtx.createImageData(SZ, SZ);
+  for (let y = 0; y < SZ; y++) {
+    for (let x = 0; x < SZ; x++) {
+      const cx = x - SZ/2, cy = y - SZ/2;
+      // Range from -3 to +3
+      const v = (Math.sin(x * 0.05) + Math.cos(y * 0.05) + Math.sin((cx + cy) * 0.04)) * 1.5;
+      // Map -3..3 → 0..255
+      const display = (v + 3) / 6 * 255;
+      const i = (y * SZ + x) * 4;
+      // Color: red for negative, green for positive
+      if (v < 0) {
+        inImg.data[i] = 200 + v * 30;
+        inImg.data[i+1] = 100;
+        inImg.data[i+2] = 100;
+      } else {
+        inImg.data[i] = 100;
+        inImg.data[i+1] = 100 + v * 40;
+        inImg.data[i+2] = 100;
+      }
+      inImg.data[i+3] = 255;
+    }
+  }
+  inCtx.putImageData(inImg, 0, 0);
+
+  // Apply first active activation
+  const actKey = activeActs.values().next().value || 'relu';
+  const act = activations[actKey];
+  document.getElementById('actOutLabel').textContent = `After ${act.name}`;
+
+  const outImg = outCtx.createImageData(SZ, SZ);
+  for (let y = 0; y < SZ; y++) {
+    for (let x = 0; x < SZ; x++) {
+      const cx = x - SZ/2, cy = y - SZ/2;
+      const v = (Math.sin(x * 0.05) + Math.cos(y * 0.05) + Math.sin((cx + cy) * 0.04)) * 1.5;
+      const out = act.f(v);
+      const i = (y * SZ + x) * 4;
+      // Map output to color
+      if (out < 0.05 && out > -0.05) {
+        outImg.data[i] = 30; outImg.data[i+1] = 30; outImg.data[i+2] = 30;
+      } else if (out < 0) {
+        outImg.data[i] = 200 + out * 50;
+        outImg.data[i+1] = 100;
+        outImg.data[i+2] = 100;
+      } else {
+        outImg.data[i] = 100;
+        outImg.data[i+1] = Math.min(255, 100 + out * 60);
+        outImg.data[i+2] = 100;
+      }
+      outImg.data[i+3] = 255;
+    }
+  }
+  outCtx.putImageData(outImg, 0, 0);
+}
+
+document.querySelectorAll('[data-act]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.act;
+    if (activeActs.has(key) && activeActs.size > 1) {
+      activeActs.delete(key);
+      btn.dataset.active = 'false';
+    } else {
+      activeActs.add(key);
+      btn.dataset.active = 'true';
+    }
+    plotActivations();
+  });
+});
+
+plotActivations();
+
+// ============ TAB 4: BATCH NORMALIZATION ============
+let bnShift = 0;
+let bnScale = 1;
+let bnGamma = 1;
+let bnBeta = 0;
+
+// Generate random sample data
+const bnSamples = [];
+for (let i = 0; i < 100; i++) {
+  // Mix of two gaussians
+  const u1 = Math.random();
+  const u2 = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  bnSamples.push(z);
+}
+
+function plotBN() {
+  const W = 400, H = 280;
+  const xMin = -10, xMax = 10;
+
+  function drawHist(svgId, data, meanLabel, stdLabel) {
+    const svg = document.getElementById(svgId);
+    svg.innerHTML = '';
+
+    const mean = data.reduce((a,b) => a+b, 0) / data.length;
+    const std = Math.sqrt(data.reduce((a,b) => a + (b-mean)**2, 0) / data.length);
+
+    document.getElementById(meanLabel).textContent = mean.toFixed(2);
+    document.getElementById(stdLabel).textContent = std.toFixed(2);
+
+    // Histogram bins
+    const numBins = 30;
+    const bins = new Array(numBins).fill(0);
+    data.forEach(v => {
+      const binIdx = Math.floor(((v - xMin) / (xMax - xMin)) * numBins);
+      if (binIdx >= 0 && binIdx < numBins) bins[binIdx]++;
+    });
+    const maxBin = Math.max(...bins, 1);
+
+    let html = '';
+
+    // Grid
+    for (let x = -8; x <= 8; x += 2) {
+      const px = ((x - xMin) / (xMax - xMin)) * W;
+      html += `<line x1="${px}" y1="20" x2="${px}" y2="${H-30}" stroke="rgba(180,150,90,0.2)" stroke-width="1"/>`;
+      if (x !== 0) html += `<text x="${px}" y="${H-12}" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#6b5942">${x}</text>`;
+    }
+
+    // Center line at x=0
+    const cx = ((0 - xMin) / (xMax - xMin)) * W;
+    html += `<line x1="${cx}" y1="20" x2="${cx}" y2="${H-30}" stroke="#3d2f1f" stroke-width="1.5"/>`;
+    html += `<line x1="0" y1="${H-30}" x2="${W}" y2="${H-30}" stroke="#3d2f1f" stroke-width="1.5"/>`;
+
+    // Mean line
+    const meanPx = ((mean - xMin) / (xMax - xMin)) * W;
+    html += `<line x1="${meanPx}" y1="20" x2="${meanPx}" y2="${H-30}" stroke="#c8553d" stroke-width="2" stroke-dasharray="4,4"/>`;
+    html += `<text x="${meanPx + 4}" y="32" font-family="Caveat" font-size="14" fill="#c8553d" font-weight="700">μ = ${mean.toFixed(2)}</text>`;
+
+    // Std band
+    const std1 = ((mean - std - xMin) / (xMax - xMin)) * W;
+    const std2 = ((mean + std - xMin) / (xMax - xMin)) * W;
+    html += `<rect x="${std1}" y="20" width="${std2-std1}" height="${H-50}" fill="rgba(232, 197, 71, 0.2)"/>`;
+
+    // Bars
+    bins.forEach((count, i) => {
+      if (count === 0) return;
+      const barH = (count / maxBin) * (H - 60);
+      const barX = (i / numBins) * W;
+      const barW = W / numBins - 1;
+      html += `<rect x="${barX}" y="${H - 30 - barH}" width="${barW}" height="${barH}" fill="#6a9b5e" opacity="0.7" stroke="#3d2f1f" stroke-width="1" rx="1"/>`;
+    });
+
+    svg.innerHTML = html;
+  }
+
+  // Original distribution (shifted, scaled)
+  const original = bnSamples.map(v => v * bnScale + bnShift);
+  // BN: normalize then apply gamma, beta
+  const mean = original.reduce((a,b) => a+b, 0) / original.length;
+  const std = Math.sqrt(original.reduce((a,b) => a + (b-mean)**2, 0) / original.length) || 1e-5;
+  const bnOut = original.map(v => bnGamma * (v - mean) / std + bnBeta);
+
+  drawHist('bnPlot1', original, 'bnMean1', 'bnStd1');
+  drawHist('bnPlot2', bnOut, 'bnMean2', 'bnStd2');
+}
+
+document.getElementById('bnShift').addEventListener('input', (e) => {
+  bnShift = parseInt(e.target.value) / 10;
+  document.getElementById('bnShiftVal').textContent = bnShift.toFixed(1);
+  plotBN();
+});
+document.getElementById('bnScale').addEventListener('input', (e) => {
+  bnScale = parseInt(e.target.value) / 10;
+  document.getElementById('bnScaleVal').textContent = bnScale.toFixed(1);
+  plotBN();
+});
+document.getElementById('bnGamma').addEventListener('input', (e) => {
+  bnGamma = parseInt(e.target.value) / 10;
+  document.getElementById('bnGammaVal').textContent = bnGamma.toFixed(1);
+  plotBN();
+});
+document.getElementById('bnBeta').addEventListener('input', (e) => {
+  bnBeta = parseInt(e.target.value) / 10;
+  document.getElementById('bnBetaVal').textContent = bnBeta.toFixed(1);
+  plotBN();
+});
+plotBN();
+
+// ============ TAB 5: FC vs CONV ============
+let fcSize = 224;
+let fcOut = 1024;
+
+function updateFCComparison() {
+  // FC: input × output params
+  // For one channel input: H×W×Cin × Cout
+  // Assume input is H×W×3 (RGB)
+  const Cin = 3;
+  const Cout = fcOut;
+
+  const fcParams = fcSize * fcSize * Cin * Cout;
+  const conv3Params = 3 * 3 * Cin * Cout;
+  const conv1Params = 1 * 1 * Cin * Cout;
+
+  document.getElementById('fcSizeVal').textContent = `${fcSize} × ${fcSize}`;
+  document.getElementById('fcOutVal').textContent = fcOut;
+
+  function fmt(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return n.toString();
+  }
+
+  document.getElementById('fcFcCount').textContent = fmt(fcParams);
+  document.getElementById('fcConvCount').textContent = fmt(conv3Params);
+  document.getElementById('fcConv1Count').textContent = fmt(conv1Params);
+
+  // Bar widths (log scale for fairness)
+  const maxLog = Math.log10(fcParams + 1);
+  const minLog = 0;
+  function barWidth(n) {
+    const l = Math.log10(n + 1);
+    return Math.max(2, ((l - minLog) / (maxLog - minLog)) * 100);
+  }
+
+  document.getElementById('fcFcBar').style.width = barWidth(fcParams) + '%';
+  document.getElementById('fcFcBar').textContent = fmt(fcParams);
+  document.getElementById('fcConvBar').style.width = barWidth(conv3Params) + '%';
+  document.getElementById('fcConvBar').textContent = fmt(conv3Params);
+  document.getElementById('fcConv1Bar').style.width = barWidth(conv1Params) + '%';
+  document.getElementById('fcConv1Bar').textContent = fmt(conv1Params);
+
+  const ratio = (fcParams / conv3Params).toFixed(0);
+  document.getElementById('fcRatio').textContent = fmt(parseInt(ratio));
+}
+
+document.getElementById('fcSize').addEventListener('input', (e) => {
+  fcSize = parseInt(e.target.value);
+  updateFCComparison();
+});
+document.getElementById('fcOut').addEventListener('input', (e) => {
+  fcOut = parseInt(e.target.value);
+  updateFCComparison();
+});
+updateFCComparison();
+
+
+// ============ TAB 6: GRADIENT VANISHING ============
+const depthSlider = document.getElementById('depthSlider');
+const factorSlider = document.getElementById('factorSlider');
+const plainLayers = document.getElementById('plainLayers');
+const resLayers = document.getElementById('resLayers');
+let bpAnimating = false;
+
+function renderGradient(animProgress) {
+  const depth = parseInt(depthSlider.value);
+  const factor = parseInt(factorSlider.value) / 100;
+  document.getElementById('depthVal').textContent = depth + ' layers';
+  document.getElementById('factorVal').textContent = factor.toFixed(2);
+
+  plainLayers.innerHTML = '';
+  resLayers.innerHTML = '';
+
+  let plainFirstGrad = 0, resFirstGrad = 0;
+  let plainEffCount = 0, resEffCount = 0;
+
+  for (let i = 0; i < depth; i++) {
+    const distFromOutput = depth - 1 - i;
+    let plainGrad = Math.pow(factor, distFromOutput);
+    let resGrad = Math.min(1, plainGrad + (1 - Math.pow(0.92, distFromOutput)));
+
+    // Animation: gradient flows from right (output) to left (input)
+    if (typeof animProgress === 'number') {
+      // animProgress 0..1; the wave passes from i=depth-1 down to i=0
+      const wavePos = depth - 1 - animProgress * depth;
+      if (i > wavePos) {
+        // Already passed
+      } else if (i > wavePos - 3) {
+        // Currently being processed - highlight
+        plainGrad = Math.min(1, plainGrad * 2.5);
+        resGrad = Math.min(1, resGrad * 1.5);
+      } else {
+        // Not yet reached - gray
+        plainGrad = 0.05;
+        resGrad = 0.05;
+      }
+    }
+
+    if (i === 0) { plainFirstGrad = Math.pow(factor, depth - 1); resFirstGrad = Math.min(1, Math.pow(factor, depth - 1) + (1 - Math.pow(0.92, depth - 1))); }
+    const realPlain = Math.pow(factor, depth - 1 - i);
+    const realRes = Math.min(1, realPlain + (1 - Math.pow(0.92, depth - 1 - i)));
+    if (realPlain > 0.01) plainEffCount++;
+    if (realRes > 0.01) resEffCount++;
+
+    const pBar = document.createElement('div');
+    pBar.className = 'layer-bar';
+    const pIntensity = Math.max(0.05, plainGrad);
+    pBar.style.background = `rgb(${Math.round(106 + (200-106)*pIntensity)}, ${Math.round(155 + (85-155)*pIntensity)}, ${Math.round(94 + (61-94)*pIntensity)})`;
+    pBar.style.opacity = Math.max(0.15, plainGrad);
+    plainLayers.appendChild(pBar);
+
+    const rBar = document.createElement('div');
+    rBar.className = 'layer-bar';
+    const rIntensity = Math.max(0.05, resGrad);
+    rBar.style.background = `rgb(${Math.round(106 + (200-106)*rIntensity)}, ${Math.round(155 + (85-155)*rIntensity)}, ${Math.round(94 + (61-94)*rIntensity)})`;
+    rBar.style.opacity = Math.max(0.15, resGrad);
+    resLayers.appendChild(rBar);
+  }
+
+  document.getElementById('plainFirst').textContent = plainFirstGrad < 0.001 ? '~0' : plainFirstGrad.toExponential(2);
+  document.getElementById('resFirst').textContent = resFirstGrad.toFixed(3);
+  document.getElementById('plainEff').textContent = plainEffCount + ' / ' + depth;
+  document.getElementById('resEff').textContent = resEffCount + ' / ' + depth;
+}
+
+depthSlider.addEventListener('input', () => renderGradient());
+factorSlider.addEventListener('input', () => renderGradient());
+
+document.getElementById('bpAnim').addEventListener('click', () => {
+  if (bpAnimating) return;
+  bpAnimating = true;
+  const btn = document.getElementById('bpAnim');
+  btn.textContent = '⏸ 播放中...';
+  let progress = 0;
+  const interval = setInterval(() => {
+    progress += 0.03;
+    if (progress >= 1.1) {
+      clearInterval(interval);
+      bpAnimating = false;
+      btn.textContent = '⏵ 播放動畫';
+      renderGradient();
+    } else {
+      renderGradient(progress);
+    }
+  }, 60);
+});
+
+renderGradient();
+
+// ============ TAB 7: RESIDUAL LEARNING ============
+let resAmp = 0.5;
+let resPhase = 0.2;
+
+function plotResidual() {
+  const svg = document.getElementById('resPlot');
+  const W = 500, H = 320;
+  svg.innerHTML = '';
+
+  let html = '';
+
+  // Grid
+  for (let x = 50; x <= W; x += 50) {
+    html += `<line x1="${x}" y1="20" x2="${x}" y2="${H-30}" stroke="rgba(180,150,90,0.15)" stroke-width="1"/>`;
+  }
+  for (let y = 60; y < H - 30; y += 40) {
+    html += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(180,150,90,0.15)" stroke-width="1"/>`;
+  }
+
+  // Center line
+  const cy = H / 2 - 5;
+  html += `<line x1="0" y1="${cy}" x2="${W}" y2="${cy}" stroke="#3d2f1f" stroke-width="1.5"/>`;
+  html += `<text x="8" y="${cy - 6}" font-family="JetBrains Mono" font-size="10" fill="#6b5942">y = 0</text>`;
+
+  // Plot input x (sine wave)
+  function plotPath(fn, color, width) {
+    let path = '';
+    const N = 200;
+    for (let i = 0; i <= N; i++) {
+      const x = i / N;
+      const y = fn(x);
+      const px = x * W;
+      const py = cy - y * 100;
+      path += (i === 0 ? 'M' : ' L') + ` ${px.toFixed(1)} ${py.toFixed(1)}`;
+    }
+    return `<path d="${path}" stroke="${color}" stroke-width="${width}" fill="none" stroke-linecap="round"/>`;
+  }
+
+  // Input x: a smooth wave
+  const inputFn = t => Math.sin(t * Math.PI * 2) * 0.7;
+  // F(x): the residual to learn (with controllable amp/phase)
+  const residualFn = t => Math.sin(t * Math.PI * 4 + resPhase * Math.PI * 2) * resAmp;
+  // Output y = F(x) + x
+  const outputFn = t => inputFn(t) + residualFn(t);
+
+  html += plotPath(inputFn, '#4a87a8', 2.5);
+  html += plotPath(residualFn, '#e89c50', 2.5);
+  html += plotPath(outputFn, '#c8553d', 3);
+
+  // Labels at endpoints
+  const endX = W - 12;
+  html += `<text x="${endX}" y="${cy - inputFn(1) * 100 - 6}" text-anchor="end" font-family="Caveat" font-size="14" fill="#4a87a8" font-weight="700">x</text>`;
+  html += `<text x="${endX}" y="${cy - residualFn(1) * 100 - 6}" text-anchor="end" font-family="Caveat" font-size="14" fill="#e89c50" font-weight="700">F(x)</text>`;
+  html += `<text x="${endX}" y="${cy - outputFn(1) * 100 - 6}" text-anchor="end" font-family="Caveat" font-size="14" fill="#c8553d" font-weight="700">F(x)+x</text>`;
+
+  svg.innerHTML = html;
+}
+
+document.getElementById('resAmp').addEventListener('input', (e) => {
+  resAmp = parseInt(e.target.value) / 100;
+  document.getElementById('resAmpVal').textContent = resAmp.toFixed(1);
+  plotResidual();
+});
+document.getElementById('resPhase').addEventListener('input', (e) => {
+  resPhase = parseInt(e.target.value) / 100;
+  document.getElementById('resPhaseVal').textContent = resPhase.toFixed(1);
+  plotResidual();
+});
+plotResidual();
+
+// Residual gradient flow viz
+function drawResGradFlow(animProgress) {
+  const svg = document.getElementById('resGradFlow');
+  const W = 800, H = 240;
+  svg.innerHTML = '';
+
+  let html = '';
+
+  // Two rows: top = plain, bottom = residual
+  const numLayers = 8;
+  const startX = 60;
+  const spacing = (W - 120) / (numLayers - 1);
+  const topY = 60;
+  const botY = 180;
+
+  // Plain CNN row label
+  html += `<text x="20" y="${topY + 5}" font-family="Caveat" font-size="18" fill="#3d2f1f" font-weight="700">Plain</text>`;
+  html += `<text x="20" y="${botY + 5}" font-family="Caveat" font-size="18" fill="#3d2f1f" font-weight="700">ResNet</text>`;
+
+  // Draw layer boxes for both rows
+  const factor = 0.6;
+  for (let i = 0; i < numLayers; i++) {
+    const x = startX + i * spacing;
+    const distFromOutput = numLayers - 1 - i;
+
+    // Plain gradient at this layer
+    let plainGrad = Math.pow(factor, distFromOutput);
+    let resGrad = Math.min(1, plainGrad + (1 - Math.pow(0.92, distFromOutput)));
+
+    // Animation flow
+    if (typeof animProgress === 'number') {
+      const wavePos = numLayers - 1 - animProgress * numLayers;
+      if (i > wavePos) {
+        // not yet reached
+        plainGrad *= 0.2;
+        resGrad *= 0.2;
+      }
+    }
+
+    const plainColor = `rgba(200, 85, 61, ${Math.max(0.15, plainGrad)})`;
+    const resColor = `rgba(106, 155, 94, ${Math.max(0.15, resGrad)})`;
+
+    // Top boxes (plain)
+    html += `<circle cx="${x}" cy="${topY}" r="20" fill="${plainColor}" stroke="#3d2f1f" stroke-width="2"/>`;
+    html += `<text x="${x}" y="${topY + 5}" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#3d2f1f" font-weight="700">L${i+1}</text>`;
+
+    // Bottom boxes (residual)
+    html += `<circle cx="${x}" cy="${botY}" r="20" fill="${resColor}" stroke="#3d2f1f" stroke-width="2"/>`;
+    html += `<text x="${x}" y="${botY + 5}" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#3d2f1f" font-weight="700">L${i+1}</text>`;
+
+    // Arrows between layers (for plain)
+    if (i < numLayers - 1) {
+      const x2 = startX + (i + 1) * spacing;
+      html += `<line x1="${x + 20}" y1="${topY}" x2="${x2 - 20}" y2="${topY}" stroke="#c8553d" stroke-width="2" opacity="${Math.max(0.2, plainGrad)}"/>`;
+      // Bottom: arrows + skip arc
+      html += `<line x1="${x + 20}" y1="${botY}" x2="${x2 - 20}" y2="${botY}" stroke="#6a9b5e" stroke-width="2" opacity="${Math.max(0.2, resGrad)}"/>`;
+    }
+
+    // Skip connections (residual): every 2 layers
+    if (i % 2 === 0 && i + 2 < numLayers) {
+      const x2 = startX + (i + 2) * spacing;
+      const arcMidX = (x + x2) / 2;
+      html += `<path d="M ${x + 20} ${botY - 5} Q ${arcMidX} ${botY - 35}, ${x2 - 20} ${botY - 5}" fill="none" stroke="#6a9b5e" stroke-width="2.5" stroke-dasharray="4,3" opacity="${Math.max(0.4, resGrad)}"/>`;
+    }
+  }
+
+  // Backward arrow at right
+  html += `<text x="${W - 15}" y="30" text-anchor="end" font-family="Caveat" font-size="20" fill="#c8553d" font-weight="700">← backward</text>`;
+  html += `<text x="${W - 15}" y="${H - 10}" text-anchor="end" font-family="Patrick Hand" font-size="13" fill="#6b5942">梯度從輸出層往輸入層傳</text>`;
+
+  svg.innerHTML = html;
+}
+
+document.getElementById('resAnimBtn').addEventListener('click', () => {
+  const btn = document.getElementById('resAnimBtn');
+  if (btn.dataset.playing === 'true') return;
+  btn.dataset.playing = 'true';
+  btn.textContent = '⏸ 播放中...';
+  let progress = 0;
+  const interval = setInterval(() => {
+    progress += 0.025;
+    if (progress >= 1.1) {
+      clearInterval(interval);
+      btn.dataset.playing = 'false';
+      btn.textContent = '⏵ 播放梯度反向傳播動畫';
+      drawResGradFlow();
+    } else {
+      drawResGradFlow(progress);
+    }
+  }, 60);
+});
+
+drawResGradFlow();
+
+// ============ TAB 8: YOLO ============
+const yoloCanvas = document.getElementById('yoloCanvas');
+const yoloCtx = yoloCanvas.getContext('2d');
+let yoloMode = 'anchor';
+let selectedCell = null;
+let nmsMode = false;
+
+const gtBoxes = [
+  { x: 0.25, y: 0.35, w: 0.18, h: 0.30, label: 'person' },
+  { x: 0.65, y: 0.55, w: 0.28, h: 0.22, label: 'car' },
+  { x: 0.50, y: 0.78, w: 0.10, h: 0.10, label: 'dog' }
+];
+
+function drawYolo() {
+  const gridSize = parseInt(document.getElementById('gridSlider').value);
+  const numAnchors = parseInt(document.getElementById('anchorSlider').value);
+  const W = yoloCanvas.width, H = yoloCanvas.height;
+  const cellW = W / gridSize, cellH = H / gridSize;
+
+  document.getElementById('gridVal').textContent = `${gridSize} × ${gridSize}`;
+  document.getElementById('anchorVal').textContent = numAnchors;
+  document.getElementById('gridInfo').textContent = `${gridSize} × ${gridSize}`;
+  document.getElementById('anchorInfo').textContent = yoloMode === 'anchor' ? numAnchors : 1;
+
+  const numClasses = 20;
+  const perAnchor = 5 + numClasses;
+  const totalPerCell = (yoloMode === 'anchor' ? numAnchors : 1) * perAnchor;
+  document.getElementById('perAnchor').textContent = `5 + ${numClasses} = ${perAnchor}`;
+  document.getElementById('outputShape').textContent = `(B, ${gridSize}, ${gridSize}, ${totalPerCell})`;
+
+  yoloCtx.clearRect(0, 0, W, H);
+
+  // Paper-style background
+  yoloCtx.fillStyle = '#fff8e7';
+  yoloCtx.fillRect(0, 0, W, H);
+
+  // GT boxes
+  gtBoxes.forEach(b => {
+    yoloCtx.fillStyle = 'rgba(232, 156, 80, 0.2)';
+    yoloCtx.strokeStyle = '#e89c50';
+    yoloCtx.lineWidth = 2.5;
+    const bx = (b.x - b.w/2) * W, by = (b.y - b.h/2) * H;
+    yoloCtx.fillRect(bx, by, b.w * W, b.h * H);
+    yoloCtx.strokeRect(bx, by, b.w * W, b.h * H);
+    yoloCtx.fillStyle = '#e89c50';
+    yoloCtx.beginPath();
+    yoloCtx.arc(b.x * W, b.y * H, 5, 0, 2 * Math.PI);
+    yoloCtx.fill();
+    yoloCtx.fillStyle = '#3d2f1f';
+    yoloCtx.font = '700 13px Kalam, cursive';
+    yoloCtx.fillText(b.label, bx + 4, by - 6);
+  });
+
+  // Grid lines
+  yoloCtx.strokeStyle = 'rgba(61, 47, 31, 0.3)';
+  yoloCtx.lineWidth = 1;
+  for (let i = 1; i < gridSize; i++) {
+    yoloCtx.beginPath();
+    yoloCtx.moveTo(i * cellW, 0); yoloCtx.lineTo(i * cellW, H); yoloCtx.stroke();
+    yoloCtx.beginPath();
+    yoloCtx.moveTo(0, i * cellH); yoloCtx.lineTo(W, i * cellH); yoloCtx.stroke();
+  }
+
+  // Highlight responsible cells
+  gtBoxes.forEach(b => {
+    const cellX = Math.floor(b.x * gridSize);
+    const cellY = Math.floor(b.y * gridSize);
+    yoloCtx.fillStyle = 'rgba(106, 155, 94, 0.25)';
+    yoloCtx.fillRect(cellX * cellW, cellY * cellH, cellW, cellH);
+    yoloCtx.strokeStyle = 'rgba(106, 155, 94, 0.9)';
+    yoloCtx.lineWidth = 2.5;
+    yoloCtx.strokeRect(cellX * cellW, cellY * cellH, cellW, cellH);
+  });
+
+  // NMS visualization
+  if (nmsMode) {
+    // Show many overlapping predictions for first GT
+    const b = gtBoxes[1]; // car
+    const predictions = [];
+    for (let i = 0; i < 8; i++) {
+      const jitter = 0.05;
+      predictions.push({
+        x: b.x + (Math.random() - 0.5) * jitter,
+        y: b.y + (Math.random() - 0.5) * jitter,
+        w: b.w * (0.85 + Math.random() * 0.3),
+        h: b.h * (0.85 + Math.random() * 0.3),
+        conf: 0.4 + Math.random() * 0.55
+      });
+    }
+    // Sort by conf
+    predictions.sort((a,b) => b.conf - a.conf);
+
+    predictions.forEach((p, i) => {
+      const isKept = i === 0; // After NMS, keep highest
+      yoloCtx.strokeStyle = isKept ? '#c8553d' : 'rgba(139, 109, 181, 0.5)';
+      yoloCtx.lineWidth = isKept ? 3 : 1.5;
+      yoloCtx.setLineDash(isKept ? [] : [4, 3]);
+      const bx = (p.x - p.w/2) * W, by = (p.y - p.h/2) * H;
+      yoloCtx.strokeRect(bx, by, p.w * W, p.h * H);
+      if (isKept) {
+        yoloCtx.fillStyle = '#c8553d';
+        yoloCtx.font = '700 12px JetBrains Mono';
+        yoloCtx.fillText(`${p.conf.toFixed(2)} ✓`, bx + 4, by + 14);
+      }
+    });
+    yoloCtx.setLineDash([]);
+  }
+
+  // Selected cell
+  if (selectedCell) {
+    const { cx, cy } = selectedCell;
+    if (cx < gridSize && cy < gridSize) {
+      const centerX = (cx + 0.5) * cellW;
+      const centerY = (cy + 0.5) * cellH;
+      yoloCtx.fillStyle = 'rgba(74, 135, 168, 0.25)';
+      yoloCtx.fillRect(cx * cellW, cy * cellH, cellW, cellH);
+      yoloCtx.strokeStyle = '#4a87a8';
+      yoloCtx.lineWidth = 3;
+      yoloCtx.strokeRect(cx * cellW, cy * cellH, cellW, cellH);
+
+      if (yoloMode === 'anchor') {
+        const anchorShapes = [
+          { w: 0.10, h: 0.10 }, { w: 0.20, h: 0.20 },
+          { w: 0.30, h: 0.18 }, { w: 0.15, h: 0.30 },
+          { w: 0.08, h: 0.08 }
+        ];
+        const colors = ['#c8553d', '#e89c50', '#6a9b5e', '#4a87a8', '#8b6db5'];
+        for (let i = 0; i < numAnchors; i++) {
+          const a = anchorShapes[i % anchorShapes.length];
+          const ax = centerX - a.w * W / 2, ay = centerY - a.h * H / 2;
+          yoloCtx.strokeStyle = colors[i];
+          yoloCtx.lineWidth = 2;
+          yoloCtx.setLineDash([5, 4]);
+          yoloCtx.strokeRect(ax, ay, a.w * W, a.h * H);
+        }
+        yoloCtx.setLineDash([]);
+      } else {
+        yoloCtx.fillStyle = '#4a87a8';
+        yoloCtx.beginPath();
+        yoloCtx.arc(centerX, centerY, 7, 0, 2 * Math.PI);
+        yoloCtx.fill();
+        yoloCtx.strokeStyle = '#4a87a8';
+        yoloCtx.lineWidth = 2;
+        yoloCtx.setLineDash([5, 4]);
+        const predW = 0.25, predH = 0.20;
+        yoloCtx.strokeRect(centerX - predW * W / 2, centerY - predH * H / 2, predW * W, predH * H);
+        yoloCtx.setLineDash([]);
+      }
+    }
+  }
+
+  // Cell info
+  const infoEl = document.getElementById('cellInfo');
+  if (selectedCell) {
+    const { cx, cy } = selectedCell;
+    const isResponsible = gtBoxes.some(b => Math.floor(b.x * gridSize) === cx && Math.floor(b.y * gridSize) === cy);
+    if (yoloMode === 'anchor') {
+      infoEl.innerHTML = `
+        <div><strong>Cell (${cx}, ${cy})</strong></div>
+        <div style="margin-top: 8px; color: ${isResponsible ? 'var(--green)' : 'var(--ink-faint)'};">
+          ${isResponsible ? '✓ 負責預測一個 GT box' : '○ 不負責(predict background)'}
+        </div>
+        <div style="margin-top: 10px;">輸出 ${numAnchors} 個 anchor 的:</div>
+        <div style="margin-left: 8px; margin-top: 4px; color: var(--ink-faint); font-family: 'JetBrains Mono'; font-size: 11px;">
+          (tx, ty, tw, th, conf, c1...c20)<br>
+          × ${numAnchors} = ${numAnchors * 25} numbers
+        </div>
+      `;
+    } else {
+      infoEl.innerHTML = `
+        <div><strong>Cell (${cx}, ${cy})</strong></div>
+        <div style="margin-top: 8px; color: ${isResponsible ? 'var(--green)' : 'var(--ink-faint)'};">
+          ${isResponsible ? '✓ 負責預測一個 GT box' : '○ 不負責'}
+        </div>
+        <div style="margin-top: 10px;">直接輸出:</div>
+        <div style="margin-left: 8px; margin-top: 4px; color: var(--ink-faint); font-family: 'JetBrains Mono'; font-size: 11px;">
+          (cx, cy, w, h, conf, c1...c20)<br>
+          = 25 numbers (no anchor)
+        </div>
+      `;
+    }
+  } else {
+    infoEl.textContent = '點擊左邊任一格子來看 detail';
+  }
+}
+
+yoloCanvas.addEventListener('click', (e) => {
+  const rect = yoloCanvas.getBoundingClientRect();
+  const scale = yoloCanvas.width / rect.width;
+  const x = (e.clientX - rect.left) * scale;
+  const y = (e.clientY - rect.top) * scale;
+  const gridSize = parseInt(document.getElementById('gridSlider').value);
+  selectedCell = {
+    cx: Math.floor(x / yoloCanvas.width * gridSize),
+    cy: Math.floor(y / yoloCanvas.height * gridSize)
+  };
+  drawYolo();
+});
+
+document.getElementById('gridSlider').addEventListener('input', drawYolo);
+document.getElementById('anchorSlider').addEventListener('input', drawYolo);
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    yoloMode = btn.dataset.mode;
+    document.getElementById('anchorSlider').disabled = (yoloMode === 'free');
+    drawYolo();
+  });
+});
+document.getElementById('nmsBtn').addEventListener('click', () => {
+  nmsMode = !nmsMode;
+  document.getElementById('nmsBtn').textContent = nmsMode ? '隱藏 NMS' : '顯示重複偵測 + NMS';
+  drawYolo();
+});
+drawYolo();
+
+// IoU canvas
+const iouCanvas = document.getElementById('iouCanvas');
+const iouCtx = iouCanvas.getContext('2d');
+let predBox = { x: 100, y: 100, w: 120, h: 100 };
+const gtBox = { x: 60, y: 60, w: 140, h: 130 };
+let iouDragging = false;
+let iouDragOffset = { x: 0, y: 0 };
+
+function computeIoU(a, b) {
+  const x1 = Math.max(a.x, b.x);
+  const y1 = Math.max(a.y, b.y);
+  const x2 = Math.min(a.x + a.w, b.x + b.w);
+  const y2 = Math.min(a.y + a.h, b.y + b.h);
+  if (x2 <= x1 || y2 <= y1) return 0;
+  const inter = (x2 - x1) * (y2 - y1);
+  const union = a.w * a.h + b.w * b.h - inter;
+  return inter / union;
+}
+
+function drawIoU() {
+  const W = iouCanvas.width, H = iouCanvas.height;
+  iouCtx.clearRect(0, 0, W, H);
+  iouCtx.fillStyle = '#fff8e7';
+  iouCtx.fillRect(0, 0, W, H);
+
+  // Compute intersection
+  const x1 = Math.max(gtBox.x, predBox.x);
+  const y1 = Math.max(gtBox.y, predBox.y);
+  const x2 = Math.min(gtBox.x + gtBox.w, predBox.x + predBox.w);
+  const y2 = Math.min(gtBox.y + gtBox.h, predBox.y + predBox.h);
+
+  // Draw intersection (yellow fill)
+  if (x2 > x1 && y2 > y1) {
+    iouCtx.fillStyle = 'rgba(232, 197, 71, 0.5)';
+    iouCtx.fillRect(x1, y1, x2 - x1, y2 - y1);
+  }
+
+  // GT box (orange)
+  iouCtx.strokeStyle = '#e89c50';
+  iouCtx.lineWidth = 3;
+  iouCtx.strokeRect(gtBox.x, gtBox.y, gtBox.w, gtBox.h);
+  iouCtx.fillStyle = '#e89c50';
+  iouCtx.font = '700 12px Kalam, cursive';
+  iouCtx.fillText('GT', gtBox.x + 4, gtBox.y - 6);
+
+  // Pred box (blue, with grab handle look)
+  iouCtx.strokeStyle = '#4a87a8';
+  iouCtx.lineWidth = 3;
+  iouCtx.setLineDash([6, 4]);
+  iouCtx.strokeRect(predBox.x, predBox.y, predBox.w, predBox.h);
+  iouCtx.setLineDash([]);
+  iouCtx.fillStyle = '#4a87a8';
+  iouCtx.fillText('Pred', predBox.x + 4, predBox.y - 6);
+  // Drag handle
+  iouCtx.fillStyle = '#4a87a8';
+  iouCtx.beginPath();
+  iouCtx.arc(predBox.x + predBox.w/2, predBox.y + predBox.h/2, 6, 0, 2*Math.PI);
+  iouCtx.fill();
+
+  const iou = computeIoU(gtBox, predBox);
+  document.getElementById('iouVal').textContent = iou.toFixed(3);
+  const status = iou >= 0.5 ? '✓ Match!' : iou >= 0.3 ? '~ 邊緣' : '✗ Miss';
+  const statusEl = document.getElementById('iouStatus');
+  statusEl.textContent = status;
+  statusEl.style.color = iou >= 0.5 ? 'var(--green)' : iou >= 0.3 ? 'var(--orange)' : 'var(--red)';
+}
+
+iouCanvas.addEventListener('mousedown', (e) => {
+  const rect = iouCanvas.getBoundingClientRect();
+  const scale = iouCanvas.width / rect.width;
+  const mx = (e.clientX - rect.left) * scale;
+  const my = (e.clientY - rect.top) * scale;
+  if (mx >= predBox.x && mx <= predBox.x + predBox.w && my >= predBox.y && my <= predBox.y + predBox.h) {
+    iouDragging = true;
+    iouDragOffset = { x: mx - predBox.x, y: my - predBox.y };
+  }
+});
+iouCanvas.addEventListener('mousemove', (e) => {
+  if (!iouDragging) return;
+  const rect = iouCanvas.getBoundingClientRect();
+  const scale = iouCanvas.width / rect.width;
+  const mx = (e.clientX - rect.left) * scale;
+  const my = (e.clientY - rect.top) * scale;
+  predBox.x = Math.max(0, Math.min(iouCanvas.width - predBox.w, mx - iouDragOffset.x));
+  predBox.y = Math.max(0, Math.min(iouCanvas.height - predBox.h, my - iouDragOffset.y));
+  drawIoU();
+});
+window.addEventListener('mouseup', () => { iouDragging = false; });
+// Touch
+iouCanvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const rect = iouCanvas.getBoundingClientRect();
+  const scale = iouCanvas.width / rect.width;
+  const t = e.touches[0];
+  const mx = (t.clientX - rect.left) * scale;
+  const my = (t.clientY - rect.top) * scale;
+  if (mx >= predBox.x && mx <= predBox.x + predBox.w && my >= predBox.y && my <= predBox.y + predBox.h) {
+    iouDragging = true;
+    iouDragOffset = { x: mx - predBox.x, y: my - predBox.y };
+  }
+});
+iouCanvas.addEventListener('touchmove', (e) => {
+  if (!iouDragging) return;
+  e.preventDefault();
+  const rect = iouCanvas.getBoundingClientRect();
+  const scale = iouCanvas.width / rect.width;
+  const t = e.touches[0];
+  const mx = (t.clientX - rect.left) * scale;
+  const my = (t.clientY - rect.top) * scale;
+  predBox.x = Math.max(0, Math.min(iouCanvas.width - predBox.w, mx - iouDragOffset.x));
+  predBox.y = Math.max(0, Math.min(iouCanvas.height - predBox.h, my - iouDragOffset.y));
+  drawIoU();
+});
+window.addEventListener('touchend', () => { iouDragging = false; });
+
+drawIoU();
+
+// ============ TAB 9: BUILDER ============
+const stack = document.getElementById('stack');
+const codeOutput = document.getElementById('codeOutput');
+const paramCount = document.getElementById('paramCount');
+const palette = document.getElementById('palette');
+let layers = [];
+
+const layerSpecs = {
+  Conv:     { name: 'Conv2d 3×3' },
+  ConvDown: { name: 'Conv2d 3×3 ↓' },
+  BN:       { name: 'BatchNorm2d' },
+  ReLU:     { name: 'ReLU' },
+  MaxPool:  { name: 'MaxPool 2×2' },
+  GAP:      { name: 'GlobalAvgPool' },
+  Flatten:  { name: 'Flatten' },
+  FC:       { name: 'Linear' },
+  Residual: { name: 'ResidualBlock' }
+};
+
+function computeShapes() {
+  let C = 3, H = 224, W = 224;
+  let totalParams = 0;
+  const shapes = [];
+  let convCount = 0;
+
+  layers.forEach((layer) => {
+    let outC = C, outH = H, outW = W;
+    let layerParams = 0;
+
+    if (layer.type === 'Conv') {
+      convCount++;
+      outC = convCount === 1 ? 64 : Math.min(C * 2, 512);
+      layerParams = (3 * 3 * C + 1) * outC;
+      C = outC;
+    } else if (layer.type === 'ConvDown') {
+      convCount++;
+      outC = convCount === 1 ? 64 : Math.min(C * 2, 512);
+      outH = Math.floor(H / 2);
+      outW = Math.floor(W / 2);
+      layerParams = (3 * 3 * C + 1) * outC;
+      C = outC; H = outH; W = outW;
+    } else if (layer.type === 'BN') {
+      layerParams = 2 * C;
+    } else if (layer.type === 'MaxPool') {
+      H = Math.floor(H / 2); W = Math.floor(W / 2);
+    } else if (layer.type === 'GAP') {
+      H = 1; W = 1;
+    } else if (layer.type === 'Flatten') {
+      C = C * H * W; H = 1; W = 1;
+    } else if (layer.type === 'FC') {
+      const inFeats = (H === 1 && W === 1) ? C : C * H * W;
+      const outFeats = 1000;
+      layerParams = (inFeats + 1) * outFeats;
+      C = outFeats; H = 1; W = 1;
+    } else if (layer.type === 'Residual') {
+      layerParams = 2 * ((3 * 3 * C + 1) * C + 2 * C);
+    }
+
+    totalParams += layerParams;
+    const shapeStr = (H === 1 && W === 1) ? `(B, ${C})` : `(B, ${C}, ${H}, ${W})`;
+    shapes.push({ shape: shapeStr, params: layerParams });
+  });
+
+  return { shapes, totalParams };
+}
+
+function formatParams(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function renderStack() {
+  if (layers.length === 0) {
+    stack.innerHTML = '<div class="stack-empty">把左邊的 layer 拖過來,或直接點擊</div>';
+    paramCount.textContent = '0';
+    codeOutput.innerHTML = '<span class="com"># 拖 layer 進來,code 會自動生成</span>';
+    return;
+  }
+
+  const { shapes, totalParams } = computeShapes();
+  stack.innerHTML = '';
+  layers.forEach((layer, idx) => {
+    const item = document.createElement('div');
+    item.className = 'stack-item';
+    item.innerHTML = `
+      <span>${idx + 1}. ${layerSpecs[layer.type].name}</span>
+      <span class="stack-item-shape">${shapes[idx].shape}</span>
+      <button class="stack-item-remove" data-idx="${idx}">×</button>
+    `;
+    stack.appendChild(item);
+  });
+  stack.querySelectorAll('.stack-item-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.idx);
+      layers.splice(idx, 1);
+      renderStack();
+    });
+  });
+  paramCount.textContent = formatParams(totalParams);
+  generateCode();
+}
+
+function generateCode() {
+  let code = '<span class="kw">import</span> torch.nn <span class="kw">as</span> nn\n\n';
+  code += '<span class="kw">class</span> <span class="cls">MyModel</span>(nn.<span class="cls">Module</span>):\n';
+  code += '    <span class="kw">def</span> __init__(<span class="kw">self</span>, num_classes=<span class="num">1000</span>):\n';
+  code += '        <span class="kw">super</span>().__init__()\n';
+  let C = 3, H = 224, W = 224;
+  let convCount = 0;
+  const layerNames = [];
+
+  layers.forEach((layer, idx) => {
+    const lname = `layer${idx + 1}`;
+    layerNames.push({ name: lname, type: layer.type });
+    if (layer.type === 'Conv') {
+      convCount++;
+      const outC = convCount === 1 ? 64 : Math.min(C * 2, 512);
+      code += `        <span class="kw">self</span>.${lname} = nn.<span class="cls">Conv2d</span>(${C}, ${outC}, kernel_size=<span class="num">3</span>, padding=<span class="num">1</span>)\n`;
+      C = outC;
+    } else if (layer.type === 'ConvDown') {
+      convCount++;
+      const outC = convCount === 1 ? 64 : Math.min(C * 2, 512);
+      code += `        <span class="kw">self</span>.${lname} = nn.<span class="cls">Conv2d</span>(${C}, ${outC}, kernel_size=<span class="num">3</span>, stride=<span class="num">2</span>, padding=<span class="num">1</span>)\n`;
+      C = outC; H = Math.floor(H/2); W = Math.floor(W/2);
+    } else if (layer.type === 'BN') {
+      code += `        <span class="kw">self</span>.${lname} = nn.<span class="cls">BatchNorm2d</span>(${C})\n`;
+    } else if (layer.type === 'ReLU') {
+      code += `        <span class="kw">self</span>.${lname} = nn.<span class="cls">ReLU</span>(inplace=<span class="kw">True</span>)\n`;
+    } else if (layer.type === 'MaxPool') {
+      code += `        <span class="kw">self</span>.${lname} = nn.<span class="cls">MaxPool2d</span>(<span class="num">2</span>, <span class="num">2</span>)\n`;
+      H = Math.floor(H/2); W = Math.floor(W/2);
+    } else if (layer.type === 'GAP') {
+      code += `        <span class="kw">self</span>.${lname} = nn.<span class="cls">AdaptiveAvgPool2d</span>(<span class="num">1</span>)\n`;
+      H = 1; W = 1;
+    } else if (layer.type === 'Flatten') {
+      code += `        <span class="kw">self</span>.${lname} = nn.<span class="cls">Flatten</span>()\n`;
+      C = C * H * W; H = 1; W = 1;
+    } else if (layer.type === 'FC') {
+      const inFeats = (H === 1 && W === 1) ? C : C * H * W;
+      code += `        <span class="kw">self</span>.${lname} = nn.<span class="cls">Linear</span>(${inFeats}, num_classes)\n`;
+      C = 1000; H = 1; W = 1;
+    } else if (layer.type === 'Residual') {
+      code += `        <span class="kw">self</span>.${lname} = <span class="cls">ResidualBlock</span>(${C}, ${C})  <span class="com"># defined elsewhere</span>\n`;
+    }
+  });
+  code += '\n    <span class="kw">def</span> forward(<span class="kw">self</span>, x):\n';
+  layerNames.forEach(l => { code += `        x = <span class="kw">self</span>.${l.name}(x)\n`; });
+  code += '        <span class="kw">return</span> x\n';
+  codeOutput.innerHTML = code;
+}
+
+palette.querySelectorAll('.palette-item').forEach(item => {
+  item.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('type', item.dataset.type);
+  });
+  item.addEventListener('click', () => {
+    layers.push({ type: item.dataset.type });
+    renderStack();
+  });
+});
+stack.addEventListener('dragover', (e) => { e.preventDefault(); stack.classList.add('drag-over'); });
+stack.addEventListener('dragleave', () => stack.classList.remove('drag-over'));
+stack.addEventListener('drop', (e) => {
+  e.preventDefault();
+  stack.classList.remove('drag-over');
+  const type = e.dataTransfer.getData('type');
+  if (type) { layers.push({ type }); renderStack(); }
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  layers = []; renderStack();
+});
+document.getElementById('presetBtn').addEventListener('click', () => {
+  layers = [
+    { type: 'ConvDown' }, { type: 'BN' }, { type: 'ReLU' },
+    { type: 'Residual' },
+    { type: 'ConvDown' }, { type: 'BN' }, { type: 'ReLU' },
+    { type: 'Residual' },
+    { type: 'ConvDown' }, { type: 'BN' }, { type: 'ReLU' },
+    { type: 'Residual' },
+    { type: 'GAP' }, { type: 'Flatten' }, { type: 'FC' }
+  ];
+  renderStack();
+});
+document.getElementById('presetVgg').addEventListener('click', () => {
+  layers = [
+    { type: 'Conv' }, { type: 'ReLU' },
+    { type: 'Conv' }, { type: 'ReLU' }, { type: 'MaxPool' },
+    { type: 'Conv' }, { type: 'ReLU' },
+    { type: 'Conv' }, { type: 'ReLU' }, { type: 'MaxPool' },
+    { type: 'Conv' }, { type: 'ReLU' },
+    { type: 'Conv' }, { type: 'ReLU' }, { type: 'MaxPool' },
+    { type: 'Flatten' }, { type: 'FC' }
+  ];
+  renderStack();
+});
+
+// Initial example
+layers = [
+  { type: 'Conv' }, { type: 'BN' }, { type: 'ReLU' }, { type: 'MaxPool' },
+  { type: 'Conv' }, { type: 'BN' }, { type: 'ReLU' },
+  { type: 'GAP' }, { type: 'Flatten' }, { type: 'FC' }
+];
+renderStack();
+
+// Re-attach tooltips for any newly inserted dynamic content
+attachTooltips();
+
+</script>
+</body>
+</html>
