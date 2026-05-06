@@ -1,0 +1,295 @@
+/* Slide-specific CSS for diagrams and demos */
+
+/* ====== Diagram primitives ====== */
+
+.box-3d {
+  border: 2.5px solid var(--ink);
+  background: var(--cream);
+  border-radius: 10px;
+  box-shadow: 5px 5px 0 var(--ink);
+  padding: 18px 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.flow-arrow {
+  font-size: 48px;
+  color: var(--red);
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* CNN architecture diagram */
+.arch-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 24px 0;
+}
+
+.arch-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.arch-cube {
+  border: 2.5px solid var(--ink);
+  background: var(--cream);
+  border-radius: 8px;
+  box-shadow: 4px 4px 0 var(--ink);
+  padding: 14px 16px;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 18px;
+  font-weight: 700;
+  min-width: 80px;
+  text-align: center;
+}
+
+.arch-cube.conv { background: #f4d4a3; }
+.arch-cube.pool { background: #b8d4a8; }
+.arch-cube.fc { background: #d8b8d8; }
+.arch-cube.bn { background: #a8c8d8; }
+.arch-cube.relu { background: #f4b4a3; }
+.arch-cube.input { background: var(--paper-dark); }
+.arch-cube.output { background: var(--ink); color: var(--paper); }
+
+.arch-cube .lbl { font-size: 14px; color: var(--ink-soft); margin-top: 2px; font-family: 'Kalam', cursive; }
+
+/* Layer stack visualization (volumes) */
+.vol-stack {
+  position: relative;
+  display: inline-block;
+  perspective: 600px;
+}
+.vol-cube {
+  border: 2px solid var(--ink);
+  background: linear-gradient(135deg, var(--cream), var(--paper-dark));
+  box-shadow: 4px 4px 0 var(--ink);
+  position: relative;
+}
+
+/* Receptive field demo grids */
+.rf-grid {
+  display: grid;
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 var(--ink);
+  overflow: hidden;
+}
+.rf-cell {
+  border: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  transition: all 0.4s;
+}
+.rf-cell.active { background: var(--yellow); color: var(--ink); font-weight: 700; }
+.rf-cell.highlight { background: var(--orange); color: var(--ink); font-weight: 700; }
+
+/* Animated convolution kernel sliding */
+.conv-anim-wrap {
+  position: relative;
+  display: inline-block;
+}
+.conv-kernel-overlay {
+  position: absolute;
+  border: 3px solid var(--red);
+  background: rgba(232, 197, 71, 0.3);
+  pointer-events: none;
+  transition: all 0.6s ease-in-out;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgba(200, 85, 61, 0.3);
+}
+
+/* Filter library cards */
+.filter-card {
+  background: var(--cream);
+  border: 2.5px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 4px 4px 0 var(--ink);
+  padding: 14px;
+  text-align: center;
+}
+.filter-card-title {
+  font-family: 'Caveat', cursive;
+  font-size: 22px;
+  color: var(--red);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.filter-card .kvalues {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  margin: 8px 0;
+}
+.filter-card .kv {
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--ink-faint);
+  text-align: center;
+}
+
+/* Big stat */
+.stat-block {
+  text-align: center;
+  padding: 20px;
+}
+.stat-block .stat-num {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 100px;
+  font-weight: 800;
+  color: var(--red);
+  line-height: 1;
+}
+.stat-block .stat-num.green { color: var(--green); }
+.stat-block .stat-num.blue { color: var(--blue); }
+.stat-block .stat-label {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 24px;
+  color: var(--ink-soft);
+  margin-top: 8px;
+}
+
+/* Pill list */
+.pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--cream);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  font-family: 'Kalam', cursive;
+  font-weight: 700;
+  font-size: 22px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.pill.active { background: var(--yellow); }
+
+/* ResNet skip connection diagram */
+.skip-diagram {
+  position: relative;
+  padding: 40px 20px;
+}
+
+/* YOLO grid demo */
+.yolo-grid-vis {
+  display: grid;
+  border: 3px solid var(--ink);
+  background: linear-gradient(135deg, #c8b89c 0%, #a89878 100%);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.yolo-cell {
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  position: relative;
+  transition: background 0.3s;
+}
+.yolo-cell.responsible {
+  background: rgba(232, 197, 71, 0.5);
+}
+.yolo-cell.dot::after {
+  content: '';
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.yolo-bbox {
+  position: absolute;
+  border: 3px solid var(--red);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.yolo-bbox.gt { border-color: var(--orange); border-style: solid; }
+.yolo-bbox.pred { border-color: var(--blue); border-style: dashed; }
+
+/* Timeline */
+.timeline {
+  position: relative;
+  padding: 0 0 0 40px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 12px; top: 8px; bottom: 8px;
+  width: 4px;
+  background: var(--ink);
+  border-radius: 2px;
+}
+.timeline-item {
+  position: relative;
+  padding: 12px 0 24px;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -34px; top: 18px;
+  width: 18px; height: 18px;
+  background: var(--red);
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+  box-shadow: inset -2px -2px 3px rgba(0,0,0,0.2);
+}
+.timeline-item .year {
+  font-family: 'Caveat', cursive;
+  font-size: 28px;
+  color: var(--red);
+  font-weight: 700;
+}
+.timeline-item .name {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.timeline-item .desc {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 22px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* Gradient flow demo (for ResNet) */
+.gradient-bar {
+  display: flex;
+  gap: 4px;
+  align-items: end;
+  height: 100px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px dashed var(--line);
+  border-radius: 6px;
+}
+.grad-col {
+  flex: 1;
+  background: var(--green);
+  border-radius: 2px;
+  min-height: 4px;
+  transition: all 0.4s;
+}
