@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1 - Computer Vision</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f8fafc;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 3rem;
+      font-size: 1.1rem;
+    }
+    .cards {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .card {
+      display: block;
+      text-decoration: none;
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      padding: 2.5rem 3rem;
+      transition: all 0.3s ease;
+      min-width: 240px;
+    }
+    .card:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(96, 165, 250, 0.5);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+    .card-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    .card-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .card-desc {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Lesson 1 — Computer Vision</h1>
+    <p class="subtitle">選擇你想查看的版本</p>
+    <div class="cards">
+      <a href="/web/" class="card">
+        <div class="card-icon">📖</div>
+        <div class="card-title">Web 課程內容</div>
+        <div class="card-desc">完整的網頁版課程教材</div>
+      </a>
+      <a href="/slide/" class="card">
+        <div class="card-icon">🎬</div>
+        <div class="card-title">Slide 投影片</div>
+        <div class="card-desc">互動式投影片與 Demo</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
