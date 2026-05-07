@@ -1,0 +1,221 @@
+    <h2 class="section-title">卷積遊樂場</h2>
+    <span class="section-tag">Convolution Playground</span>
+    <p class="section-desc">
+      自己拖一個 <span class="term" data-term="kernel">3×3 kernel</span> 的數值,看它對圖片做了什麼。
+      <span class="term" data-term="cnn">CNN</span> 第一層就是在做這件事,只是 kernel 的值是模型自己<span class="term" data-term="learn">學出來的</span>。
+      新增了 stride 和 padding 可以調,還有 <span class="term" data-term="receptive">receptive field</span> 動畫。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">什麼是卷積?</div>
+        <div class="concept-card-text">一個小窗戶在圖上滑,每滑一次做一次<span class="term" data-term="dotproduct">點積</span>運算,輸出一張 feature map。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼是 3×3?</div>
+        <div class="concept-card-text"><span class="term" data-term="vgg">VGG 論文</span>證明兩個 3×3 等於一個 5×5,但參數更少。3×3 從此成為共識。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">什麼是 feature map?</div>
+        <div class="concept-card-text">每個 kernel 滑完整張圖後產生的 2D 矩陣,<span class="term" data-term="featuremap">代表「某種特徵在哪裡出現」</span>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">Padding & Stride</div>
+        <div class="concept-card-text"><span class="term" data-term="padding">Padding</span> 是邊緣補幾圈 0,<span class="term" data-term="stride">stride</span> 是一次滑幾格。下面可以調看看。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Stride 步長</span><span class="val" id="convStrideVal">1</span></div>
+          <input type="range" id="convStride" min="1" max="3" value="1" step="1">
+          <div class="slider-help">每次滑幾格;stride=2 → 輸出尺寸減半</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Padding 補邊</span><span class="val" id="convPadVal">1</span></div>
+          <input type="range" id="convPad" min="0" max="2" value="1" step="1">
+          <div class="slider-help">邊緣補幾圈 0;padding=1 + 3×3 + stride=1 → 尺寸不變</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>顯示 Receptive Field</span></div>
+          <button id="rfToggle" class="btn">啟動動畫</button>
+          <div class="slider-help">看 kernel 怎麼滑過整張圖</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Input · Kernel</div>
+        <div class="conv-canvas-wrap">
+          <canvas id="srcCanvas" class="demo-canvas" width="200" height="200"></canvas>
+          <div class="img-row" id="imgPicker"></div>
+          <div class="kernel-section">
+            <div class="panel-label" style="margin-bottom: 10px; justify-content: center;">3×3 Kernel(可以改數字)</div>
+            <div class="kernel-grid" id="kernelGrid"></div>
+            <div class="btn-row">
+              <button class="btn tiny term" data-term="kernel-identity" data-preset="identity">Identity</button>
+              <button class="btn tiny term" data-term="kernel-edge" data-preset="edge">Edge</button>
+              <button class="btn tiny term" data-term="kernel-sobel-x" data-preset="sobel-x">Sobel X</button>
+              <button class="btn tiny term" data-term="kernel-sobel-y" data-preset="sobel-y">Sobel Y</button>
+              <button class="btn tiny term" data-term="kernel-blur" data-preset="blur">Blur</button>
+              <button class="btn tiny term" data-term="kernel-sharpen" data-preset="sharpen">Sharpen</button>
+              <button class="btn tiny term" data-term="kernel-emboss" data-preset="emboss">Emboss</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">Output Feature Map</div>
+        <div class="conv-canvas-wrap">
+          <canvas id="dstCanvas" class="demo-canvas" width="200" height="200"></canvas>
+          <div class="info-grid" style="width: 100%;">
+            <div class="info-cell"><div class="info-cell-label">Input</div><div class="info-cell-value">200 × 200</div></div>
+            <div class="info-cell"><div class="info-cell-label">Output</div><div class="info-cell-value" id="convOutShape">200 × 200</div></div>
+            <div class="info-cell"><div class="info-cell-label">Kernel</div><div class="info-cell-value">3 × 3</div></div>
+            <div class="info-cell"><div class="info-cell-label">Params</div><div class="info-cell-value">9 + 1</div></div>
+          </div>
+          <div style="margin-top: 14px; padding: 12px 14px; background: rgba(74, 135, 168, 0.1); border: 1.5px dashed var(--blue); border-radius: 6px; width: 100%;">
+            <div style="font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-bottom: 4px;">PyTorch:</div>
+            <div id="convPyCode" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink);">nn.Conv2d(1, 1, kernel_size=3, stride=1, padding=1)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">Receptive Field 計算器</h3>
+    <div class="panel">
+      <div class="panel-label">堆疊層看感受野怎麼長大</div>
+      <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 10px;">
+        加層看 receptive field 怎麼成長。公式: RF<sub>new</sub> = RF<sub>old</sub> + (kernel − 1) × stride_product
+      </p>
+      <div class="btn-row" style="justify-content: flex-start;">
+        <button class="btn" id="rfAdd3x3">+ 3×3 Conv</button>
+        <button class="btn" id="rfAddPool">+ MaxPool 2×2</button>
+        <button class="btn" id="rfAddStride">+ Stride=2 Conv</button>
+        <button class="btn danger" id="rfClear">Clear</button>
+      </div>
+      <div class="rf-calc-layers" id="rfLayers"></div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-cell-label">Current RF</div><div class="info-cell-value" id="rfValue">1 × 1</div></div>
+        <div class="info-cell"><div class="info-cell-label">Stride Product</div><div class="info-cell-value" id="rfStride">1</div></div>
+        <div class="info-cell"><div class="info-cell-label">Layers</div><div class="info-cell-value" id="rfCount">0</div></div>
+      </div>
+      <div style="margin-top: 14px; text-align: center;">
+        <div class="rf-grid-vis" id="rfGrid"></div>
+        <div style="font-family: 'Patrick Hand', cursive; font-size: 12px; color: var(--ink-faint); margin-top: 6px;">紅色區域 = 輸出一個 pixel 能「看到」的原圖範圍</div>
+      </div>
+    </div>
+
+    <h3 class="subhead">Output Size 計算器</h3>
+    <div class="calc-box calc-box-enhanced">
+      <div class="panel-label">輸入參數,即時計算輸出尺寸</div>
+
+      <div class="calc-visual-container">
+        <div class="calc-visual-grid-wrap">
+          <div class="calc-visual-label">Input</div>
+          <div class="calc-visual-grid" id="calcVisualInput">
+            <div class="calc-grid-inner" id="calcGridInput"></div>
+            <div class="calc-grid-size" id="calcGridInputSize">224×224</div>
+          </div>
+        </div>
+
+        <div class="calc-visual-arrow">
+          <svg width="60" height="40" viewBox="0 0 60 40">
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="var(--red)"/>
+              </marker>
+            </defs>
+            <path d="M5 20 Q30 8 55 20" stroke="var(--red)" stroke-width="2.5" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="4 3">
+              <animate attributeName="stroke-dashoffset" from="60" to="0" dur="1.5s" repeatCount="indefinite"/>
+            </path>
+          </svg>
+          <div class="calc-visual-arrow-label">Conv</div>
+        </div>
+
+        <div class="calc-visual-grid-wrap">
+          <div class="calc-visual-label">Output</div>
+          <div class="calc-visual-grid" id="calcVisualOutput">
+            <div class="calc-grid-inner" id="calcGridOutput"></div>
+            <div class="calc-grid-size" id="calcGridOutputSize">224×224</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="calc-formula-breakdown" id="calcFormulaBreakdown">
+        <div class="calc-formula-step">
+          <span class="calc-formula-label">公式</span>
+          <span class="calc-formula-expr">Output = floor((<span class="calc-hl-input">Input</span> + 2×<span class="calc-hl-pad">Padding</span> - <span class="calc-hl-kernel">Kernel</span>) / <span class="calc-hl-stride">Stride</span>) + 1</span>
+        </div>
+        <div class="calc-formula-step">
+          <span class="calc-formula-label">代入</span>
+          <span class="calc-formula-expr" id="calcSubstitution">floor((224 + 2×1 - 3) / 1) + 1</span>
+        </div>
+        <div class="calc-formula-step">
+          <span class="calc-formula-label">計算</span>
+          <span class="calc-formula-expr" id="calcComputation">floor(223 / 1) + 1 = 224</span>
+        </div>
+      </div>
+
+      <div class="calc-inputs">
+        <div class="calc-input-group">
+          <label><span class="calc-hl-input">Input Size</span></label>
+          <input type="number" id="calcInput" value="224" min="1">
+          <input type="range" id="calcInputSlider" min="4" max="512" value="224" class="calc-slider">
+        </div>
+        <div class="calc-input-group">
+          <label><span class="calc-hl-kernel">Kernel Size</span></label>
+          <input type="number" id="calcKernel" value="3" min="1">
+          <input type="range" id="calcKernelSlider" min="1" max="11" value="3" step="2" class="calc-slider">
+        </div>
+        <div class="calc-input-group">
+          <label><span class="calc-hl-stride">Stride</span></label>
+          <input type="number" id="calcStride" value="1" min="1">
+          <input type="range" id="calcStrideSlider" min="1" max="4" value="1" class="calc-slider">
+        </div>
+        <div class="calc-input-group">
+          <label><span class="calc-hl-pad">Padding</span></label>
+          <input type="number" id="calcPadding" value="1" min="0">
+          <input type="range" id="calcPaddingSlider" min="0" max="5" value="1" class="calc-slider">
+        </div>
+      </div>
+
+      <div class="calc-result-enhanced" id="calcResult">
+        <span class="calc-result-number" id="calcResultNum">224</span>
+        <span class="calc-result-label">Output Size</span>
+      </div>
+
+      <div class="calc-presets">
+        <span class="calc-presets-label">快速範例:</span>
+        <button class="btn tiny calc-preset-btn" data-i="224" data-k="3" data-s="1" data-p="1">VGG Conv (保持尺寸)</button>
+        <button class="btn tiny calc-preset-btn" data-i="224" data-k="3" data-s="2" data-p="1">Stride=2 (下採樣)</button>
+        <button class="btn tiny calc-preset-btn" data-i="56" data-k="1" data-s="1" data-p="0">1×1 Conv (不變)</button>
+        <button class="btn tiny calc-preset-btn" data-i="224" data-k="7" data-s="2" data-p="3">ResNet 第一層</button>
+      </div>
+
+      <div class="calc-tips">
+        <div class="calc-tip"><span class="calc-tip-icon">💡</span>stride=1, padding=kernel//2 → 尺寸不變</div>
+        <div class="calc-tip"><span class="calc-tip-icon">💡</span>stride=2 → 尺寸約減半</div>
+        <div class="calc-tip"><span class="calc-tip-icon">⚠️</span>如果 Output ≤ 0 表示 kernel 太大或參數不合理</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼這個很重要?</div>
+      Sobel 是經典邊緣偵測器,人類花了幾十年才想出來。但 CNN 訓練幾個 epoch 後,
+      <strong>第一層的 kernel 自己就會長得很像 Sobel</strong>。
+      這就是 deep learning 的魔法 — 把 feature engineering 交給模型自己做。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://cs231n.github.io/convolutional-networks/" target="_blank" rel="noopener"><span>Stanford CS231n — Convolutional Networks</span><span class="resource-tag">課程</span></a>
+        <a class="resource-link" href="https://setosa.io/ev/image-kernels/" target="_blank" rel="noopener"><span>Image Kernels Explained Visually</span><span class="resource-tag">視覺化</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Conv2d.html" target="_blank" rel="noopener"><span>PyTorch nn.Conv2d 文件</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1409.1556" target="_blank" rel="noopener"><span>VGG paper (Simonyan & Zisserman, 2014)</span><span class="resource-tag">論文</span></a>
+      </div>
+    </div>

@@ -1,0 +1,302 @@
+    <h2 class="section-title">資料增強遊樂場</h2>
+    <span class="section-tag">Data Augmentation Playground</span>
+    <p class="section-desc">
+      <span class="term" data-term="augmentation">Data Augmentation</span> 是訓練時對圖片做隨機變換,讓模型學到「不變性」。
+      只在訓練時使用,不增加推論成本,卻能大幅提升泛化能力。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">為什麼需要增強?</div>
+        <div class="concept-card-text">更多樣化的資料 = 更好的泛化。避免模型只記住訓練集的特定模式(過擬合)。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">只在訓練時!</div>
+        <div class="concept-card-text">推論(inference)時不做增強,所以完全不增加部署成本。是免費的午餐。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">三大類別</div>
+        <div class="concept-card-text">幾何變換(翻轉、旋轉、裁切)、光度變換(色彩、亮度)、進階合成(Mosaic、Mixup)。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">核心哲學</div>
+        <div class="concept-card-text">教模型對「不相關的變化」保持不變性:左右翻轉不該改變預測,亮度變化不該影響偵測。</div>
+      </div>
+    </div>
+
+    <!-- Basic Augmentations -->
+    <h3 class="subhead">基礎增強技術 Basic Augmentations</h3>
+    <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 16px;">
+      用滑桿調整參數,即時看到效果。左邊是原圖,右邊是增強後的結果。
+    </p>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>增強類型</span></div>
+          <select id="augType" style="width:100%; padding:6px 10px; border-radius:6px; border:1.5px solid var(--line); font-family:'Patrick Hand',cursive; font-size:14px; background:var(--paper);">
+            <option value="flip">水平翻轉 Horizontal Flip</option>
+            <option value="crop">隨機裁切 Random Crop</option>
+            <option value="rotate">旋轉 Rotation</option>
+            <option value="scale">縮放 Scale</option>
+            <option value="colorjitter">色彩抖動 Color Jitter</option>
+          </select>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>參數強度</span><span class="val" id="augParamVal">0.5</span></div>
+          <input type="range" id="augParam" min="0" max="100" value="50" step="1">
+          <div class="slider-help" id="augParamHelp">調整增強的程度</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>操作</span></div>
+          <button class="btn primary" id="augApplyBtn">套用增強</button>
+          <div class="slider-help">點擊看變換效果</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Original 原圖</div>
+        <canvas id="augSrcCanvas" class="demo-canvas" width="240" height="240"></canvas>
+        <div style="margin-top:8px; text-align:center;">
+          <button class="btn tiny" data-aug-img="checker">棋盤格</button>
+          <button class="btn tiny" data-aug-img="scene">場景</button>
+          <button class="btn tiny" data-aug-img="gradient">漸層</button>
+          <button class="btn tiny" data-aug-img="shapes">幾何</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Augmented 增強後</div>
+        <canvas id="augDstCanvas" class="demo-canvas" width="240" height="240"></canvas>
+        <div class="info-grid" style="margin-top:8px;">
+          <div class="info-cell"><div class="info-cell-label">Type</div><div class="info-cell-value" id="augTypeInfo">Flip</div></div>
+          <div class="info-cell"><div class="info-cell-label">Param</div><div class="info-cell-value" id="augParamInfo">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- YOLO Mosaic -->
+    <h3 class="subhead">Mosaic 增強 (YOLOv4)</h3>
+    <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 12px;">
+      將 4 張圖拼接成 1 張,讓模型一次看到更多物件與背景。減少對大 batch size 的依賴。
+      <strong>拖拽中心點</strong>來調整四張圖的比例。
+    </p>
+    <div class="demo-grid">
+      <div class="panel" style="grid-column: 1 / -1;">
+        <div class="panel-label">Mosaic — 拖中心點調整比例</div>
+        <canvas id="mosaicCanvas" class="demo-canvas" width="480" height="480" style="cursor:crosshair; max-width:100%;"></canvas>
+        <div class="info-grid" style="margin-top:10px;">
+          <div class="info-cell"><div class="info-cell-label">Center X</div><div class="info-cell-value" id="mosaicCX">50%</div></div>
+          <div class="info-cell"><div class="info-cell-label">Center Y</div><div class="info-cell-value" id="mosaicCY">50%</div></div>
+          <div class="info-cell"><div class="info-cell-label">Images</div><div class="info-cell-value">4 → 1</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CutMix & Mixup -->
+    <h3 class="subhead">CutMix & Mixup</h3>
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">CutMix — 裁切貼上</div>
+        <canvas id="cutmixCanvas" class="demo-canvas" width="240" height="240" style="cursor:crosshair;"></canvas>
+        <div class="slider-wrap" style="margin-top:10px;">
+          <div class="slider-label"><span>Cut 比例</span><span class="val" id="cutmixRatioVal">30%</span></div>
+          <input type="range" id="cutmixRatio" min="10" max="80" value="30" step="5">
+          <div class="slider-help">Label = 0.7×A + 0.3×B</div>
+        </div>
+        <div class="info-grid" style="margin-top:6px;">
+          <div class="info-cell"><div class="info-cell-label">Label A</div><div class="info-cell-value" id="cutmixLabelA">0.70</div></div>
+          <div class="info-cell"><div class="info-cell-label">Label B</div><div class="info-cell-value" id="cutmixLabelB">0.30</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Mixup — 透明混合</div>
+        <canvas id="mixupCanvas" class="demo-canvas" width="240" height="240"></canvas>
+        <div class="slider-wrap" style="margin-top:10px;">
+          <div class="slider-label"><span>Alpha α</span><span class="val" id="mixupAlphaVal">0.50</span></div>
+          <input type="range" id="mixupAlpha" min="0" max="100" value="50" step="5">
+          <div class="slider-help">Result = α×A + (1-α)×B</div>
+        </div>
+        <div class="info-grid" style="margin-top:6px;">
+          <div class="info-cell"><div class="info-cell-label">Weight A</div><div class="info-cell-value" id="mixupWeightA">0.50</div></div>
+          <div class="info-cell"><div class="info-cell-label">Weight B</div><div class="info-cell-value" id="mixupWeightB">0.50</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Random Erasing -->
+    <h3 class="subhead">Random Erasing / Cutout</h3>
+    <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 12px;">
+      隨機遮擋圖片的一部分,強迫模型不要只依賴某個區域。點擊畫布來新增遮擋區域。
+    </p>
+    <div class="demo-grid">
+      <div class="panel" style="grid-column: 1 / -1; max-width: 520px; margin: 0 auto;">
+        <div class="panel-label">Click to Erase — 點擊新增遮擋</div>
+        <canvas id="eraseCanvas" class="demo-canvas" width="320" height="240" style="cursor:crosshair;"></canvas>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn" id="eraseResetBtn">Reset</button>
+          <button class="btn primary" id="eraseRandomBtn">隨機遮擋 ×3</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Techniques -->
+    <h3 class="subhead">進階技術 Advanced Techniques</h3>
+    <div class="accordion">
+      <div class="accordion-header">AutoAugment — 自動學習增強策略</div>
+      <div class="accordion-body">
+        <p>Google 2018 年提出,用 Reinforcement Learning 搜尋最佳增強組合。在 ImageNet 上搜索出 25 個子策略,每個包含兩個增強操作。缺點:搜索成本極高(數千 GPU hours)。</p>
+        <div class="formula-box">Policy = { (op1, prob1, mag1), (op2, prob2, mag2) } × 25 sub-policies</div>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">RandAugment — 簡化版隨機增強</div>
+      <div class="accordion-body">
+        <p>只需兩個超參數:N(操作數量)和 M(強度)。從 14 種操作中隨機挑 N 個,每個用相同強度 M。效果接近 AutoAugment,但搜索成本趨近零。</p>
+        <div class="formula-box">RandAugment(N=2, M=9): 隨機挑 2 個操作,強度 9/30</div>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">Albumentations 函式庫</div>
+      <div class="accordion-body">
+        <p>Python 最流行的圖片增強庫,比 torchvision.transforms 快數倍。支援 bounding box 和 segmentation mask 的同步變換,是 YOLO 訓練的標配。</p>
+        <pre style="font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--cream); padding:12px; border-radius:6px; overflow-x:auto;">import albumentations as A
+transform = A.Compose([
+    A.HorizontalFlip(p=0.5),
+    A.RandomBrightnessContrast(p=0.3),
+    A.HueSaturationValue(p=0.3),
+    A.RandomResizedCrop(640, 640, scale=(0.5, 1.0)),
+], bbox_params=A.BboxParams(format='yolo'))</pre>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">Test-Time Augmentation (TTA)</div>
+      <div class="accordion-body">
+        <p>例外:推論時也做增強!對同一張圖做多次不同增強,取平均預測結果。犧牲速度換精度,常用於比賽。YOLO 的 TTA 通常做:原圖 + 水平翻轉 + 多尺度(×3 推論時間換 ~1-2% mAP)。</p>
+      </div>
+    </div>
+
+    <!-- Comparison Table -->
+    <h3 class="subhead">YOLO 版本 vs 增強技術</h3>
+    <div class="compare-table-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr><th>YOLO Version</th><th>Key Augmentations</th><th>特點</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>YOLOv1-v3</td><td>Flip, Crop, Color Jitter, Scale</td><td>基礎增強</td></tr>
+          <tr><td>YOLOv4</td><td>Mosaic, CutMix, Self-Adversarial Training</td><td>首次引入 Mosaic</td></tr>
+          <tr><td>YOLOv5</td><td>Mosaic, Copy-Paste, MixUp, HSV augment</td><td>Ultralytics 整合</td></tr>
+          <tr><td>YOLOv7</td><td>Mosaic, MixUp, Copy-Paste, Random Affine</td><td>更激進的增強</td></tr>
+          <tr><td>YOLOv8+</td><td>Mosaic(最後 10 epochs 關閉), Close Mosaic</td><td>訓練末期關閉增強</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pipeline Builder -->
+    <h3 class="subhead">增強流水線模擬器 Pipeline Simulator</h3>
+    <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 12px;">
+      點選要加入的增強步驟,看它們依序套用在圖片上的累積效果。
+    </p>
+    <div class="panel">
+      <div class="panel-label">Pipeline Builder</div>
+      <div class="btn-row" style="flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+        <button class="btn tiny" data-pipe="flip">+ Flip</button>
+        <button class="btn tiny" data-pipe="rotate">+ Rotate</button>
+        <button class="btn tiny" data-pipe="crop">+ Crop</button>
+        <button class="btn tiny" data-pipe="colorjitter">+ Color Jitter</button>
+        <button class="btn tiny" data-pipe="erase">+ Cutout</button>
+        <button class="btn tiny" data-pipe="blur">+ Blur</button>
+        <button class="btn danger tiny" id="pipeClearBtn">Clear All</button>
+      </div>
+      <div id="pipelineSteps" style="min-height:28px; margin-bottom:12px; display:flex; flex-wrap:wrap; gap:6px; font-family:'Patrick Hand',cursive; font-size:13px;"></div>
+      <div style="display:flex; gap:16px; align-items:center; justify-content:center; flex-wrap:wrap;">
+        <canvas id="pipeSrcCanvas" width="180" height="180" style="border:2px solid var(--line); border-radius:8px;"></canvas>
+        <div style="font-size:28px; color:var(--red);">→</div>
+        <canvas id="pipeDstCanvas" width="180" height="180" style="border:2px solid var(--line); border-radius:8px;"></canvas>
+      </div>
+    </div>
+
+    <!-- Code Examples -->
+    <h3 class="subhead">程式碼範例 Code Examples</h3>
+    <div class="accordion">
+      <div class="accordion-header">Mosaic 實作 (Pseudo-code)</div>
+      <div class="accordion-body">
+        <pre style="font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--cream); padding:12px; border-radius:6px; overflow-x:auto;">def mosaic_augment(images, labels, img_size=640):
+    """Combine 4 images into one mosaic."""
+    s = img_size
+    # Random center point
+    cx, cy = random.randint(s//4, 3*s//4), random.randint(s//4, 3*s//4)
+    mosaic_img = np.zeros((s, s, 3), dtype=np.uint8)
+
+    for i, (img, lbl) in enumerate(zip(images[:4], labels[:4])):
+        if i == 0:    # top-left
+            mosaic_img[:cy, :cx] = resize(img, (cy, cx))
+        elif i == 1:  # top-right
+            mosaic_img[:cy, cx:] = resize(img, (cy, s-cx))
+        elif i == 2:  # bottom-left
+            mosaic_img[cy:, :cx] = resize(img, (s-cy, cx))
+        else:         # bottom-right
+            mosaic_img[cy:, cx:] = resize(img, (s-cy, s-cx))
+        # Adjust bounding box coordinates accordingly
+    return mosaic_img, adjusted_labels</pre>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">YOLO 訓練配置 (Ultralytics)</div>
+      <div class="accordion-body">
+        <pre style="font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--cream); padding:12px; border-radius:6px; overflow-x:auto;"># ultralytics YOLO augmentation config
+augmentation:
+  hsv_h: 0.015    # Hue shift ±
+  hsv_s: 0.7      # Saturation shift ±
+  hsv_v: 0.4      # Value shift ±
+  degrees: 0.0    # Rotation ±degrees
+  translate: 0.1  # Translation ±fraction
+  scale: 0.5      # Scale gain
+  shear: 0.0      # Shear ±degrees
+  flipud: 0.0     # Flip up-down probability
+  fliplr: 0.5     # Flip left-right probability
+  mosaic: 1.0     # Mosaic probability
+  mixup: 0.0      # Mixup probability
+  copy_paste: 0.0 # Copy-paste probability
+  close_mosaic: 10  # Disable mosaic last N epochs</pre>
+      </div>
+    </div>
+
+    <!-- Quiz -->
+    <h3 class="subhead">小測驗 Quiz</h3>
+    <div class="quiz-box" data-quiz="aug-q1">
+      <div class="quiz-title">Q1: Mosaic augmentation 最大的好處是?</div>
+      <div class="quiz-option" data-correct="false" data-explanation="Mosaic 主要好處不是減少記憶體,而是增加 context diversity">減少 GPU 記憶體用量</div>
+      <div class="quiz-option" data-correct="true" data-explanation="一張 Mosaic 圖包含 4 張不同圖的內容,等效於增大了 batch 的多樣性,減少對大 batch size 的需求">一次讓模型看到更多 context,等效於更大 batch diversity</div>
+      <div class="quiz-option" data-correct="false" data-explanation="Mosaic 只在訓練用,不影響推論速度">加快推論速度</div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-box" data-quiz="aug-q2">
+      <div class="quiz-title">Q2: CutMix 跟 Cutout 的最大差別是?</div>
+      <div class="quiz-option" data-correct="false" data-explanation="兩者都是矩形操作">CutMix 用圓形,Cutout 用矩形</div>
+      <div class="quiz-option" data-correct="false" data-explanation="CutMix 在訓練時使用,不是推論">CutMix 用在推論,Cutout 用在訓練</div>
+      <div class="quiz-option" data-correct="true" data-explanation="Cutout 只是遮黑(補零),CutMix 則是貼上另一張圖的區域,並按面積比例混合標籤">CutMix 貼上另一張圖的內容並混合標籤,Cutout 只是遮黑</div>
+      <div class="quiz-feedback"></div>
+    </div>
+    <div class="quiz-box" data-quiz="aug-q3">
+      <div class="quiz-title">Q3: YOLOv8 為什麼在最後 10 個 epoch 關閉 Mosaic?</div>
+      <div class="quiz-option" data-correct="false" data-explanation="Mosaic 不影響推論,且關閉是在訓練末期而非推論前">為了讓推論速度更快</div>
+      <div class="quiz-option" data-correct="true" data-explanation="最後幾個 epoch 用正常圖片訓練,讓模型適應真實的、未經拼接的輸入分佈,可以提升最終精度">讓模型最後階段適應真實圖片分佈,提升最終精度</div>
+      <div class="quiz-option" data-correct="false" data-explanation="Mosaic 已經被證明有效,不是因為 overfitting 才關閉">因為 Mosaic 會導致 overfitting</div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <!-- Resources -->
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/2004.10934" target="_blank" rel="noopener"><span>YOLOv4 — Bag of Freebies & Mosaic</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1905.04899" target="_blank" rel="noopener"><span>CutMix: Regularization Strategy</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1710.09412" target="_blank" rel="noopener"><span>Mixup: Beyond Empirical Risk Minimization</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1909.13719" target="_blank" rel="noopener"><span>RandAugment: Practical Automated Data Augmentation</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://albumentations.ai/" target="_blank" rel="noopener"><span>Albumentations Library</span><span class="resource-tag">工具</span></a>
+        <a class="resource-link" href="https://docs.ultralytics.com/guides/data-augmentation/" target="_blank" rel="noopener"><span>Ultralytics Augmentation Guide</span><span class="resource-tag">官方</span></a>
+      </div>
+    </div>

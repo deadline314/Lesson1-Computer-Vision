@@ -1,0 +1,299 @@
+    <h2 class="section-title">模擬退火</h2>
+    <span class="section-tag">Simulated Annealing</span>
+    <p class="section-desc">
+      <span class="term" data-term="sa">模擬退火</span>是一種受冶金學啟發的全域最佳化演算法。
+      就像金屬加熱再緩慢冷卻,讓原子找到低能量排列一樣,SA 允許搜索過程「偶爾接受更差的解」,
+      藉此跳出<span class="term" data-term="local-min">局部最小值</span>,最終找到接近全域最佳的解。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">冶金學比喻</div>
+        <div class="concept-card-text">鍛造時將金屬加熱到高溫再慢慢冷卻(退火),讓晶體結構達到低能量狀態。SA 把「解」當原子,把「成本函數」當能量。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼需要 SA?</div>
+        <div class="concept-card-text">梯度下降只能往下走,容易卡在局部最小值。SA 在高溫時大膽探索,低溫時精細收斂,有機會找到全域最佳解。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">溫度的意義</div>
+        <div class="concept-card-text">溫度 T 控制「接受壞解的機率」。T 高 → 幾乎什麼都接受(探索)；T 低 → 只接受更好的解(開發)。這就是 exploration vs exploitation。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">何時用 SA vs GD?</div>
+        <div class="concept-card-text">目標函數<strong>不可微</strong>、離散、多峰(很多局部最小值)時用 SA。若函數平滑凸形,直接用梯度下降更快。</div>
+      </div>
+    </div>
+
+    <!-- Algorithm Steps -->
+    <h3 class="subhead">演算法步驟</h3>
+    <div class="step-reveal" id="saSteps">
+      <div class="step-reveal-item" data-step="1">
+        <strong>1. 初始化</strong> — 設定初始解 x₀、初始溫度 T₀、冷卻率 α
+      </div>
+      <div class="step-reveal-item" data-step="2">
+        <strong>2. 產生鄰居</strong> — 在目前解附近隨機產生新解 x'
+      </div>
+      <div class="step-reveal-item" data-step="3">
+        <strong>3. 計算能量差</strong> — ΔE = f(x') − f(x)
+      </div>
+      <div class="step-reveal-item" data-step="4">
+        <strong>4. 接受判定</strong> — 若 ΔE ≤ 0 → 一律接受；若 ΔE > 0 → 以機率 P = exp(−ΔE/T) 接受
+      </div>
+      <div class="step-reveal-item" data-step="5">
+        <strong>5. 降溫</strong> — T ← T × α（通常 α ∈ [0.90, 0.999]）
+      </div>
+      <div class="step-reveal-item" data-step="6">
+        <strong>6. 重複</strong> — 回到步驟 2,直到 T 足夠低或迭代次數用完
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <div style="font-family: 'Noto Serif TC', serif; margin-bottom: 8px; font-weight: 600;">接受機率公式</div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 15px; text-align: center; padding: 10px 0;">
+        P(accept) = exp(−ΔE / T) &nbsp; when ΔE > 0
+      </div>
+      <div style="font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-soft); margin-top: 6px;">
+        ΔE = cost_new − cost_current &nbsp;|&nbsp; T = 目前溫度 &nbsp;|&nbsp; T 高 → P ≈ 1 &nbsp;|&nbsp; T 低 → P ≈ 0
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top: 18px;">
+      <div class="panel-label">Pseudo-code</div>
+      <pre style="font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; color: var(--ink); padding: 14px; background: var(--paper-light); border-radius: 6px; overflow-x: auto; border: 1.5px dashed var(--line);">
+def simulated_annealing(f, x0, T0, alpha, max_iter):
+    x = x0
+    best = x
+    T = T0
+    for i in range(max_iter):
+        x_new = neighbor(x)
+        dE = f(x_new) - f(x)
+        if dE < 0 or random() < exp(-dE / T):
+            x = x_new
+        if f(x) < f(best):
+            best = x
+        T = T * alpha
+    return best</pre>
+    </div>
+
+    <!-- Main Interactive Demo -->
+    <h3 class="subhead">互動 2D 地形探索</h3>
+    <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 12px;">
+      觀察 SA 如何在多峰地形上搜索。綠點 = 接受的更好解，橘點 = 接受的更差解（lucky uphill），紅點 = 拒絕的嘗試。
+    </p>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>初始溫度 T₀</span><span class="val" id="saT0Val">1000</span></div>
+          <input type="range" id="saT0" min="100" max="10000" value="1000" step="100">
+          <div class="slider-help">溫度越高,前期探索範圍越大</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>冷卻率 α</span><span class="val" id="saAlphaVal">0.995</span></div>
+          <input type="range" id="saAlpha" min="900" max="999" value="995" step="1">
+          <div class="slider-help">越接近 1 冷卻越慢,搜索越仔細</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>步長 Step Size</span><span class="val" id="saStepVal">0.30</span></div>
+          <input type="range" id="saStep" min="5" max="100" value="30" step="1">
+          <div class="slider-help">鄰居解的擾動幅度</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>動畫速度</span><span class="val" id="saSpeedVal">5</span></div>
+          <input type="range" id="saSpeed" min="1" max="20" value="5" step="1">
+          <div class="slider-help">每幀執行幾個迭代</div>
+        </div>
+      </div>
+      <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn primary" id="saStart">▶ Start</button>
+        <button class="btn" id="saPause">⏸ Pause</button>
+        <button class="btn danger" id="saReset">↺ Reset</button>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel" style="flex: 2;">
+        <div class="panel-label">2D Cost Landscape</div>
+        <canvas id="saLandscape" width="500" height="400" style="width: 100%; border-radius: 6px; cursor: crosshair;"></canvas>
+        <div style="font-family: 'Patrick Hand', cursive; font-size: 12px; color: var(--ink-faint); margin-top: 6px; text-align: center;">
+          點擊地圖可設定起始位置 · 顏色深 = cost 低(好) · 顏色淺 = cost 高(差)
+        </div>
+      </div>
+      <div class="panel" style="flex: 1; min-width: 180px;">
+        <div class="panel-label">Stats</div>
+        <div class="info-grid" style="grid-template-columns: 1fr;">
+          <div class="info-cell"><div class="info-cell-label">Temperature</div><div class="info-cell-value" id="saStatTemp">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">Current Cost</div><div class="info-cell-value" id="saStatCur">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">Best Cost</div><div class="info-cell-value" id="saStatBest">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">Iterations</div><div class="info-cell-value" id="saStatIter">0</div></div>
+          <div class="info-cell"><div class="info-cell-label">Accept Rate</div><div class="info-cell-value" id="saStatRate">—</div></div>
+        </div>
+        <div style="margin-top: 14px;">
+          <div class="panel-label">Temperature Bar</div>
+          <div id="saTempBar" style="height: 200px; width: 28px; margin: 8px auto; border-radius: 14px; border: 2px solid var(--line); position: relative; overflow: hidden; background: var(--paper-light);">
+            <div id="saTempFill" style="position: absolute; bottom: 0; left: 0; right: 0; height: 100%; background: linear-gradient(to top, var(--blue), var(--orange), var(--red)); border-radius: 12px; transition: height 0.2s;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Temperature Schedule Comparison -->
+    <h3 class="subhead">冷卻排程比較</h3>
+    <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 12px;">
+      不同冷卻方式對溫度下降的影響。拖動 slider 看在第 N 步時各排程的溫度值。
+    </p>
+    <div class="controls-box">
+      <div class="slider-wrap">
+        <div class="slider-label"><span>觀察步數</span><span class="val" id="schedStepVal">500</span></div>
+        <input type="range" id="schedStep" min="0" max="1000" value="500" step="10">
+      </div>
+    </div>
+    <div class="panel">
+      <canvas id="schedCanvas" width="600" height="250" style="width: 100%; border-radius: 6px;"></canvas>
+      <div style="display: flex; gap: 18px; justify-content: center; margin-top: 10px; font-family: 'Patrick Hand', cursive; font-size: 13px;">
+        <span style="color: var(--red);">● Exponential: T×α^n</span>
+        <span style="color: var(--blue);">● Linear: T₀−(T₀/N)×n</span>
+        <span style="color: var(--green);">● Logarithmic: T₀/ln(1+n)</span>
+      </div>
+    </div>
+
+    <!-- SA vs GD -->
+    <h3 class="subhead">SA vs 梯度下降</h3>
+    <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 12px;">
+      同一個地形上同時跑 SA 和梯度下降 — 看 GD 怎麼卡住、SA 怎麼跳出來。
+    </p>
+    <div class="controls-box" style="margin-bottom: 14px;">
+      <button class="btn primary" id="vsStart">▶ 同時開始</button>
+      <button class="btn danger" id="vsReset">↺ Reset</button>
+    </div>
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Gradient Descent（梯度下降）</div>
+        <canvas id="gdCanvas" width="300" height="240" style="width: 100%; border-radius: 6px;"></canvas>
+        <div class="info-grid" style="margin-top: 8px;">
+          <div class="info-cell"><div class="info-cell-label">Cost</div><div class="info-cell-value" id="gdCost">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">Status</div><div class="info-cell-value" id="gdStatus">Ready</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Simulated Annealing（模擬退火）</div>
+        <canvas id="saCanvas2" width="300" height="240" style="width: 100%; border-radius: 6px;"></canvas>
+        <div class="info-grid" style="margin-top: 8px;">
+          <div class="info-cell"><div class="info-cell-label">Cost</div><div class="info-cell-value" id="saCost2">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">Status</div><div class="info-cell-value" id="saStatus2">Ready</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acceptance Probability Calculator -->
+    <h3 class="subhead">接受機率計算器</h3>
+    <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 12px;">
+      輸入 ΔE 和 T,看接受一個較差解的機率有多高。
+    </p>
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>ΔE（能量差）</span><span class="val" id="probDEVal">50</span></div>
+          <input type="range" id="probDE" min="1" max="500" value="50" step="1">
+          <div class="slider-help">新解比目前差多少</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>T（溫度）</span><span class="val" id="probTVal">100</span></div>
+          <input type="range" id="probT" min="1" max="2000" value="100" step="1">
+          <div class="slider-help">目前的溫度</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div style="text-align: center; padding: 16px 0;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--ink-soft); margin-bottom: 8px;">
+          P = exp(−<span id="probDEDisp">50</span> / <span id="probTDisp">100</span>)
+        </div>
+        <div style="font-size: 42px; font-weight: 700; font-family: 'Shippori Mincho', serif; color: var(--red);" id="probResult">60.65%</div>
+        <div style="margin-top: 14px; width: 100%; height: 24px; background: var(--paper-light); border-radius: 12px; border: 1.5px solid var(--line); overflow: hidden;">
+          <div id="probBar" style="height: 100%; background: linear-gradient(90deg, var(--green), var(--orange), var(--red)); border-radius: 12px; transition: width 0.3s; width: 60.65%;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-family: 'Patrick Hand', cursive; font-size: 12px; color: var(--ink-faint); margin-top: 4px;">
+          <span>0% (一定拒絕)</span><span>100% (一定接受)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Applications -->
+    <h3 class="subhead">實際應用</h3>
+    <div class="accordion">
+      <div class="accordion-header">旅行推銷員問題 (TSP)</div>
+      <div class="accordion-body">
+        <p>尋找經過所有城市一次的最短路線。鄰居解 = 隨機交換兩個城市的順序。這是 NP-hard 問題,SA 可以在合理時間找到近似最佳解。</p>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">神經架構搜索 (Neural Architecture Search)</div>
+      <div class="accordion-body">
+        <p>搜索最佳神經網路結構(層數、寬度、連接方式)。目標函數不可微,SA 可用於離散結構空間的探索。</p>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">超參數調整 (Hyperparameter Tuning)</div>
+      <div class="accordion-body">
+        <p>學習率、batch size、dropout rate 等超參數的最佳組合。SA 比 grid search 更有效率,比 random search 更有方向性。</p>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">特徵選擇 (Feature Selection)</div>
+      <div class="accordion-body">
+        <p>從上百個特徵中選出最佳子集。鄰居解 = 隨機加入或移除一個特徵。SA 可以避免 greedy selection 的局部最佳陷阱。</p>
+      </div>
+    </div>
+
+    <!-- Quiz -->
+    <div class="quiz-box" data-quiz="annealing-q1">
+      <div class="quiz-title">小測驗 1</div>
+      <p style="font-size: 14px; margin-bottom: 12px;">當溫度 T 很高時,SA 對於一個使 cost 增加(ΔE > 0)的新解會怎麼做?</p>
+      <div class="quiz-option" data-correct="false" data-explanation="這是梯度下降的行為,不是高溫 SA。">一律拒絕,只接受更好的解</div>
+      <div class="quiz-option" data-correct="true" data-explanation="正確！exp(−ΔE/T) 在 T 很大時接近 1,所以幾乎都會接受,這就是高溫探索階段。">以很高的機率接受（幾乎都接受）</div>
+      <div class="quiz-option" data-correct="false" data-explanation="SA 用的是 exp(−ΔE/T) 機率,不是固定 50%。">恰好 50% 機率接受</div>
+      <div class="quiz-option" data-correct="false" data-explanation="隨機重啟是另一種策略,不是 SA 的標準行為。">隨機重啟到全新位置</div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-box" data-quiz="annealing-q2">
+      <div class="quiz-title">小測驗 2</div>
+      <p style="font-size: 14px; margin-bottom: 12px;">冷卻率 α = 0.999 相比 α = 0.9 有什麼不同?</p>
+      <div class="quiz-option" data-correct="false" data-explanation="α 控制冷卻速度,不是步長。">步長更大,搜索更遠</div>
+      <div class="quiz-option" data-correct="true" data-explanation="α 越接近 1,溫度下降越慢,演算法有更多時間在每個溫度下探索。">冷卻更慢,搜索更仔細,但需要更多迭代</div>
+      <div class="quiz-option" data-correct="false" data-explanation="初始溫度由 T₀ 決定,跟 α 無關。">初始溫度更高</div>
+      <div class="quiz-option" data-correct="false" data-explanation="恰恰相反,α=0.999 比 α=0.9 慢得多。">收斂更快,效率更高</div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="quiz-box" data-quiz="annealing-q3">
+      <div class="quiz-title">小測驗 3</div>
+      <p style="font-size: 14px; margin-bottom: 12px;">SA 相比梯度下降最大的優勢是什麼?</p>
+      <div class="quiz-option" data-correct="false" data-explanation="SA 通常比梯度下降慢,因為它需要大量隨機探索。">收斂速度更快</div>
+      <div class="quiz-option" data-correct="false" data-explanation="SA 不需要梯度,但它也沒有用到梯度資訊來加速。">梯度計算更精確</div>
+      <div class="quiz-option" data-correct="true" data-explanation="正確！SA 透過隨機接受較差解來跳出局部最小值,這是純梯度下降做不到的。">可以跳出局部最小值,趨向全域最佳</div>
+      <div class="quiz-option" data-correct="false" data-explanation="SA 需要調整 T₀、α、步長等超參數。">不需要調超參數</div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">SA 與 Deep Learning 的關係</div>
+      在深度學習中,SA 的精神已融入許多技術:
+      <strong>Learning rate warmup</strong> 就像從高溫開始;
+      <strong>cosine annealing scheduler</strong> 的名稱直接源自退火;
+      SGD 本身的 noise 也提供了跳出鞍點的能力。
+      理解 SA 有助於理解為什麼隨機性在優化中如此重要。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://en.wikipedia.org/wiki/Simulated_annealing" target="_blank" rel="noopener"><span>Wikipedia — Simulated Annealing</span><span class="resource-tag">百科</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1903.08415" target="_blank" rel="noopener"><span>On the Convergence of Simulated Annealing</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html" target="_blank" rel="noopener"><span>PyTorch CosineAnnealingLR</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://www.science.org/doi/10.1126/science.220.4598.671" target="_blank" rel="noopener"><span>Kirkpatrick et al. 1983 — 原始 SA 論文</span><span class="resource-tag">經典</span></a>
+        <a class="resource-link" href="https://nathanrooy.github.io/posts/2020-05-14/simulated-annealing-with-python/" target="_blank" rel="noopener"><span>SA with Python — 實作教學</span><span class="resource-tag">教學</span></a>
+      </div>
+    </div>

@@ -1,0 +1,86 @@
+    <h2 class="section-title">Batch Normalization</h2>
+    <span class="section-tag">標準化的力量</span>
+    <p class="section-desc">
+      <span class="term" data-term="bn">Batch Normalization</span> 是現代 CNN 標配,但很多人講不清楚它在做什麼。
+      簡單說:<strong>把每一層的輸出分布「拉回來」</strong>,讓訓練更穩定。
+      下面實際看一看資料分布怎麼被改變。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">公式</div>
+        <div class="concept-card-text">y = γ × (x − μ) / σ + β,把分布壓成 mean=0、std=1,再用 γ、β 去學適合的分布。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼有用</div>
+        <div class="concept-card-text">讓每層收到的 input 分布穩定,可以用更大的 <span class="term" data-term="lr">learning rate</span>,訓練快很多。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Train vs Eval</div>
+        <div class="concept-card-text"><strong>新手雷</strong>:Train 用當前 batch 的 μ、σ,Eval 用訓練時的<span class="term" data-term="runningstats">移動平均</span>。忘記切換會慘。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">放在哪</div>
+        <div class="concept-card-text">通常順序:<strong>Conv → BN → ReLU</strong>。有 BN 之後幾乎不用 Dropout 了。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>原始分布的偏移 (shift)</span><span class="val" id="bnShiftVal">0.0</span></div>
+          <input type="range" id="bnShift" min="-30" max="30" value="0" step="1">
+          <div class="slider-help">模擬某層 conv 輸出的 mean 偏離 0</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>原始分布的尺度 (scale)</span><span class="val" id="bnScaleVal">1.0</span></div>
+          <input type="range" id="bnScale" min="2" max="40" value="10" step="1">
+          <div class="slider-help">模擬某層 conv 輸出的 std 偏離 1</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>學到的 γ(scale)</span><span class="val" id="bnGammaVal">1.0</span></div>
+          <input type="range" id="bnGamma" min="2" max="30" value="10" step="1">
+          <div class="slider-help">BN 之後再 scale 多少</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>學到的 β(shift)</span><span class="val" id="bnBetaVal">0.0</span></div>
+          <input type="range" id="bnBeta" min="-20" max="20" value="0" step="1">
+          <div class="slider-help">BN 之後再 shift 多少</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">原始分布(BN 之前)</div>
+        <svg id="bnPlot1" class="plot" viewBox="0 0 400 280" width="100%"></svg>
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">Mean</div><div class="info-cell-value" id="bnMean1">0.0</div></div>
+          <div class="info-cell"><div class="info-cell-label">Std</div><div class="info-cell-value" id="bnStd1">1.0</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">BN 後分布</div>
+        <svg id="bnPlot2" class="plot" viewBox="0 0 400 280" width="100%"></svg>
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">Mean</div><div class="info-cell-value" id="bnMean2">0.0</div></div>
+          <div class="info-cell"><div class="info-cell-label">Std</div><div class="info-cell-value" id="bnStd2">1.0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼要有 γ 和 β</div>
+      只把分布壓到 mean=0, std=1 太死板,可能反而削弱模型表達力。所以 BN 多加兩個<strong>可學參數</strong> γ, β,
+      讓模型自己決定「這層的 activation 適合哪種分布」 — 等於最佳化標準化的程度。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1502.03167" target="_blank" rel="noopener"><span>BN 原論文 (Ioffe & Szegedy, 2015)</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.BatchNorm2d.html" target="_blank" rel="noopener"><span>PyTorch BatchNorm2d 文件</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1805.11604" target="_blank" rel="noopener"><span>How Does Batch Norm Help Optimization?</span><span class="resource-tag">分析</span></a>
+      </div>
+    </div>

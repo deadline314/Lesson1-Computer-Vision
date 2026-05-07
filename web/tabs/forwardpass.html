@@ -1,0 +1,44 @@
+    <h2 class="section-title">Forward Pass 動畫</h2>
+    <span class="section-tag">See Data Flow Through a CNN</span>
+    <p class="section-desc">
+      點 Play 看一筆資料如何從輸入一路經過 Conv → ReLU → Pool → FC 變成分類結果。
+      觀察每一步的 <strong>tensor shape 怎麼變化</strong>。
+    </p>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>動畫速度</span><span class="val" id="fpSpeedVal">1×</span></div>
+          <input type="range" id="fpSpeed" min="0.5" max="3" value="1" step="0.25">
+        </div>
+        <div class="btn-row" style="align-items: center;">
+          <button class="btn primary" id="fpPlayBtn">▶ Play</button>
+          <button class="btn" id="fpStepBtn">⏭ Step</button>
+          <button class="btn danger" id="fpResetBtn">↺ Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="overflow-x: auto;">
+      <div class="panel-label">Mini CNN: Input → Conv → ReLU → Pool → Conv → ReLU → Pool → FC → Output</div>
+      <div class="fp-network" id="fpNetwork">
+        <div class="fp-ball" id="fpBall"></div>
+      </div>
+    </div>
+
+    <div class="fp-desc" id="fpDesc">
+      點 Play 開始動畫,或用 Step 一步一步走。
+    </div>
+
+    <div class="info-grid" style="margin-top: 16px;">
+      <div class="info-cell"><div class="info-cell-label">Current Layer</div><div class="info-cell-value" id="fpCurLayer">—</div></div>
+      <div class="info-cell"><div class="info-cell-label">Input Shape</div><div class="info-cell-value" id="fpInShape">—</div></div>
+      <div class="info-cell"><div class="info-cell-label">Output Shape</div><div class="info-cell-value" id="fpOutShape">—</div></div>
+      <div class="info-cell"><div class="info-cell-label">Parameters</div><div class="info-cell-value" id="fpParams">—</div></div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼要看 shape 變化</div>
+      新手最常見的 RuntimeError 就是 shape mismatch。理解每一層怎麼改變 tensor 的 shape,
+      就能自己算出 FC 的 input features 要填多少,不用再靠猜。
+    </div>

@@ -1,0 +1,108 @@
+    <h2 class="section-title">池化的真相</h2>
+    <span class="section-tag">Pooling Demystified</span>
+    <p class="section-desc">
+      <span class="term" data-term="pooling">Pooling</span>(池化)是 CNN 裡很常見的操作,但很多人只會背「會降低尺寸」,不知道為什麼。
+      下面動手調 window 看 <span class="term" data-term="maxpool">Max</span>、<span class="term" data-term="avgpool">Avg</span>、<span class="term" data-term="gap">GAP</span> 的差別。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">為什麼要 Pool?</div>
+        <div class="concept-card-text">三個原因:減少計算量、增加 <span class="term" data-term="receptive">receptive field</span>、提供平移不變性。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">Max Pooling</div>
+        <div class="concept-card-text">取窗戶內最大值。<strong>最常用</strong>,因為保留最強特徵。「有偵測到 = 訊號強 = 數值大」。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Avg Pooling</div>
+        <div class="concept-card-text">取平均。比較少用於分類,但用在 GAP(全部平均成一個值)取代 FC 層。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">趨勢</div>
+        <div class="concept-card-text">現代很多模型用 <span class="term" data-term="strideconv">stride=2 conv</span> 取代 pooling — 一樣下採樣但有可學參數。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Pool Type</span></div>
+          <div class="btn-row" style="margin-top: 0; justify-content: flex-start;">
+            <button class="btn tiny" data-pool="max" data-active="true" id="poolMax">Max</button>
+            <button class="btn tiny" data-pool="avg" id="poolAvg">Average</button>
+            <button class="btn tiny" data-pool="gap" id="poolGap">Global Avg</button>
+          </div>
+          <div class="slider-help">不同 pool 對相同資料會輸出不同結果</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Window Size</span><span class="val" id="poolWinVal">2 × 2</span></div>
+          <input type="range" id="poolWin" min="2" max="4" value="2" step="1">
+          <div class="slider-help">2×2 是最常用的設定</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Input(滑鼠移上看哪些 cell 在同一個 window)</div>
+        <div id="poolInputViz" style="display: flex; justify-content: center; padding: 12px;"></div>
+        <div style="text-align: center; margin-top: 8px; font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink-soft);">
+          <span class="chip yellow">黃色</span> = 當前 window · <span class="chip red">紅色</span> = 被選中的 max
+        </div>
+        <button class="btn" id="poolShuffle" style="margin-top: 12px; width: 100%;">🎲 換一組數字</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">Output</div>
+        <div id="poolOutputViz" style="display: flex; justify-content: center; padding: 12px;"></div>
+
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">Input shape</div><div class="info-cell-value" id="poolInShape">6 × 6</div></div>
+          <div class="info-cell"><div class="info-cell-label">Output shape</div><div class="info-cell-value" id="poolOutShape">3 × 3</div></div>
+          <div class="info-cell"><div class="info-cell-label">Operation</div><div class="info-cell-value" id="poolOp">Max</div></div>
+          <div class="info-cell"><div class="info-cell-label">Params</div><div class="info-cell-value">0</div></div>
+        </div>
+
+        <div style="margin-top: 14px; padding: 12px 14px; background: rgba(74, 135, 168, 0.1); border: 1.5px dashed var(--blue); border-radius: 6px;">
+          <div style="font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-bottom: 4px;">PyTorch:</div>
+          <div id="poolPyCode" style="font-family: 'JetBrains Mono', monospace; font-size: 11px;">nn.MaxPool2d(2, 2)</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">三種 Pool 的視覺對比</h3>
+    <div class="panel">
+      <p style="margin-bottom: 12px; color: var(--ink-soft); font-size: 14px;">
+        同一張 feature map,經過三種 pool 後輸出的差別:
+      </p>
+      <div id="poolCompareViz" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+        <!-- injected by JS -->
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">三種 pool 在做什麼</div>
+      <strong>Max pool</strong> 會保留最尖銳的特徵(像把音量調到只聽最大聲那一刻)。
+      <strong>Avg pool</strong> 比較平滑,不會強調極值。
+      <strong>GAP</strong> 直接把整張圖壓成一個值,通常用在最後一層當分類前的「打包」。
+    </div>
+
+    <div class="quiz-box" data-quiz="pool-q1">
+      <div class="quiz-title">小測驗</div>
+      <p style="font-size: 14px; margin-bottom: 12px;">為什麼現代架構傾向用 stride=2 conv 取代 Max Pooling?</p>
+      <div class="quiz-option" data-correct="false" data-explanation="Max Pooling 取最大值,不會模糊,模糊的是 Average Pooling。">因為 Max Pooling 會讓圖片模糊</div>
+      <div class="quiz-option" data-correct="true" data-explanation="Pooling 是固定操作,Conv 有參數可以學習最佳的下採樣方式。Darknet-53 就是這樣設計的。">stride=2 conv 有可學參數,讓模型自己決定怎麼下採樣</div>
+      <div class="quiz-option" data-correct="false" data-explanation="Max Pooling 其實計算量很小,沒有參數。">因為 Max Pooling 計算量太大</div>
+      <div class="quiz-option" data-correct="false" data-explanation="stride=2 conv 一樣會讓 H/W 減半。">stride=2 conv 不會減少尺寸</div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.MaxPool2d.html" target="_blank" rel="noopener"><span>PyTorch MaxPool2d 文件</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.AdaptiveAvgPool2d.html" target="_blank" rel="noopener"><span>AdaptiveAvgPool2d (做 GAP 用的)</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1412.6806" target="_blank" rel="noopener"><span>Striving for Simplicity (用 stride conv 取代 pool)</span><span class="resource-tag">論文</span></a>
+      </div>
+    </div>

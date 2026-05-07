@@ -1,0 +1,104 @@
+    <h2 class="section-title">激活函數動物園</h2>
+    <span class="section-tag">Activation Function Zoo</span>
+    <p class="section-desc">
+      神經網路一定要有<span class="term" data-term="activation">激活函數</span>(activation function),不然多少層都跟一層一樣
+      (因為線性的疊加還是線性)。下面看每個 activation 長什麼樣子、套用在實際資料上會發生什麼。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">為什麼要非線性?</div>
+        <div class="concept-card-text">沒有非線性,N 層 linear 化簡後跟 1 層 linear 一樣。神經網路的能力來自<strong>非線性的疊加</strong>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">ReLU 為什麼紅</div>
+        <div class="concept-card-text">計算超快(就是 if x&lt;0 return 0),不會像 sigmoid 那樣<span class="term" data-term="saturate">飽和</span>導致梯度消失。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Dying ReLU</div>
+        <div class="concept-card-text">ReLU 負半邊梯度為 0,如果某個 neuron 一直輸出負值就「死了」。<span class="term" data-term="leaky">Leaky ReLU</span> 解決這個。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">現代趨勢</div>
+        <div class="concept-card-text">YOLOv4 用 <span class="term" data-term="mish">Mish</span>,YOLOv5+、Transformer 用 <span class="term" data-term="silu">SiLU/Swish</span>。都是 ReLU 的平滑版本。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="slider-wrap">
+        <div class="slider-label" style="margin-bottom: 8px;"><span>選擇激活函數(可以多選比較)</span></div>
+        <div class="btn-row" style="justify-content: flex-start; margin-top: 0;">
+          <button class="btn tiny" data-act="relu" data-active="true">ReLU</button>
+          <button class="btn tiny" data-act="leaky">Leaky ReLU</button>
+          <button class="btn tiny" data-act="sigmoid">Sigmoid</button>
+          <button class="btn tiny" data-act="tanh">Tanh</button>
+          <button class="btn tiny" data-act="silu">SiLU / Swish</button>
+          <button class="btn tiny" data-act="mish">Mish</button>
+          <button class="btn tiny" data-act="gelu">GELU</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">函數曲線(input → output)</div>
+        <svg id="actPlot" class="plot" viewBox="0 0 400 320" width="100%"></svg>
+        <div style="text-align: center; margin-top: 12px; font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink-soft);">
+          x 軸 = input · y 軸 = output · 滑鼠移上去看數值
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">梯度曲線(d/dx output)</div>
+        <svg id="actGradPlot" class="plot" viewBox="0 0 400 320" width="100%"></svg>
+        <div style="text-align: center; margin-top: 12px; font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink-soft);">
+          這就是 backward 時會用到的東西<br>
+          <span class="chip red">梯度 ≈ 0</span> = 訓練不動了
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">套用在 feature map 上</h3>
+    <div class="panel">
+      <div style="display: grid; grid-template-columns: 1fr 80px 1fr; gap: 16px; align-items: center;">
+        <div>
+          <div style="font-family: 'Caveat', cursive; font-size: 18px; margin-bottom: 8px;">Input(模擬 Conv 輸出)</div>
+          <canvas id="actInput" class="demo-canvas" width="200" height="200" style="width: 100%; max-width: 240px;"></canvas>
+        </div>
+        <div style="text-align: center; font-family: 'Caveat', cursive; font-size: 32px; color: var(--red);">→</div>
+        <div>
+          <div style="font-family: 'Caveat', cursive; font-size: 18px; margin-bottom: 8px;" id="actOutLabel">After ReLU</div>
+          <canvas id="actOutput" class="demo-canvas" width="200" height="200" style="width: 100%; max-width: 240px;"></canvas>
+        </div>
+      </div>
+      <div style="margin-top: 16px; padding: 12px; background: rgba(232, 197, 71, 0.15); border-radius: 6px; font-family: 'Patrick Hand', cursive; font-size: 14px;">
+        💡 ReLU 把所有負值砍成 0,你會看到輸出的「黑色區域」變多 — 那些就是「死掉」的 neuron。
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">怎麼選 activation</div>
+      新模型多半從 <strong>SiLU 或 GELU</strong> 開始(YOLOv5+, Transformer 都用)。
+      老模型用 ReLU 沒問題,簡單快速。<br>
+      碰到 dying ReLU 改 <strong>Leaky ReLU</strong>。<br>
+      Sigmoid / Tanh 現在只用在<strong>輸出層</strong>(分類機率、座標限制),很少當隱藏層 activation 了。
+    </div>
+
+    <div class="quiz-box" data-quiz="activation-q1">
+      <div class="quiz-title">小測驗</div>
+      <p style="font-size: 14px; margin-bottom: 12px;">為什麼現代模型不再用 Sigmoid 當隱藏層的 activation?</p>
+      <div class="quiz-option" data-correct="false" data-explanation="計算確實比 ReLU 慢,但這不是主因。">因為計算太慢</div>
+      <div class="quiz-option" data-correct="true" data-explanation="Sigmoid 在 |x| > 4 時 gradient ≈ 0,深層網路前面的層幾乎學不到東西。">因為會飽和,導致梯度消失</div>
+      <div class="quiz-option" data-correct="false" data-explanation="Sigmoid 的輸出就是 0~1,這反而是它在輸出層還有用的原因。">因為輸出不是 0~1</div>
+      <div class="quiz-option" data-correct="false" data-explanation="Sigmoid 處處可微,這不是問題。">因為不能微分</div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1908.08681" target="_blank" rel="noopener"><span>Mish: A Self Regularized Non-Monotonic Activation</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1710.05941" target="_blank" rel="noopener"><span>Searching for Activation Functions (Swish/SiLU)</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/nn.html#non-linear-activations-weighted-sum-nonlinearity" target="_blank" rel="noopener"><span>PyTorch 所有 activation 文件</span><span class="resource-tag">官方</span></a>
+      </div>
+    </div>

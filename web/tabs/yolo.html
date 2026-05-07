@@ -1,0 +1,151 @@
+    <h2 class="section-title">YOLO 怎麼看圖</h2>
+    <span class="section-tag">Anchor & Grid Visualizer</span>
+    <p class="section-desc">
+      看 <span class="term" data-term="yolo">YOLO</span> 怎麼把圖切成 <span class="term" data-term="grid">grid</span>,以及
+      <span class="term" data-term="anchorbased">anchor-based</span> vs <span class="term" data-term="anchorfree">anchor-free</span> 的差別。
+      點擊任一格子,可以看到該格子負責預測哪些 box。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">Detection 是什麼</div>
+        <div class="concept-card-text">不只說「圖裡有貓」,還要說「貓在這個位置,框出來」。比分類難很多。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼用 grid</div>
+        <div class="concept-card-text">YOLO 把圖切 SxS 格,每格<span class="term" data-term="responsible">「負責」</span>預測中心落在它裡面的物件。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">什麼是 anchor</div>
+        <div class="concept-card-text">預先定義的 box 形狀(瘦高、寬扁、正方形)。<span class="term" data-term="kmeans">用 K-means</span> 算出來。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">Anchor-free 的勝利</div>
+        <div class="concept-card-text"><span class="term" data-term="v8anchor">YOLOv8</span> 改回 anchor-free,簡化 pipeline,不用為每個資料集設計 anchor。</div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 16px;">
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="anchor">Anchor-based</button>
+        <button class="mode-btn" data-mode="free">Anchor-free</button>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Grid Size (S × S)</span><span class="val" id="gridVal">7 × 7</span></div>
+          <input type="range" id="gridSlider" min="5" max="19" value="7" step="2">
+          <div class="slider-help">越細越能偵測小物件,計算量越大</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Anchors per cell</span><span class="val" id="anchorVal">3</span></div>
+          <input type="range" id="anchorSlider" min="1" max="5" value="3" step="1">
+          <div class="slider-help">YOLOv3 用 3,YOLOv2 用 5</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>顯示 NMS 視覺化</span></div>
+          <button class="btn" id="nmsBtn">顯示重複偵測 + NMS</button>
+          <div class="slider-help"><span class="term" data-term="nms">NMS</span> 把重複的 box 去掉</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Image · Grid · Anchors</div>
+        <div class="conv-canvas-wrap">
+          <canvas id="yoloCanvas" class="demo-canvas" width="500" height="500" style="cursor: crosshair;"></canvas>
+          <div style="font-size: 13px; color: var(--ink-soft); font-family: 'Patrick Hand', cursive; line-height: 1.6; text-align: center;">
+            <span class="chip" style="background: var(--orange); color: var(--ink);">橘色框</span> = ground truth · 
+            <span class="chip green">綠色高亮</span> = 負責的格子 · 
+            <span class="chip blue">藍色</span> = 你選的格子
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Output Tensor 結構</div>
+        <div style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink); line-height: 1.9;">
+          <div>Grid: <span style="color: var(--red); font-weight: 700;" id="gridInfo">7 × 7</span></div>
+          <div>Anchors per cell: <span style="color: var(--red); font-weight: 700;" id="anchorInfo">3</span></div>
+          <div>Per-anchor outputs: <span style="color: var(--red); font-weight: 700;" id="perAnchor">5 + 20 = 25</span></div>
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1.5px dashed var(--line);">
+            <span style="color: var(--ink-faint);">Output shape:</span>
+          </div>
+          <div style="font-size: 22px; color: var(--red); margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-weight: 700;" id="outputShape">(B, 7, 7, 75)</div>
+          <div style="font-size: 12px; color: var(--ink-faint); margin-top: 6px; font-family: 'Patrick Hand', cursive; line-height: 1.5;">
+            B = batch size · 75 = 3 anchors × (5 + 20)<br>
+            5 = (x, y, w, h, confidence) · 20 = 類別數
+          </div>
+        </div>
+        <div style="margin-top: 24px;">
+          <div class="panel-label" style="margin-bottom: 10px;">Selected cell info</div>
+          <div id="cellInfo" style="font-family: 'Kalam', cursive; font-size: 13px; color: var(--ink); padding: 14px; background: rgba(255, 255, 255, 0.6); border: 1.5px dashed var(--line); border-radius: 6px; min-height: 100px; line-height: 1.7;">
+            點擊左邊任一格子來看 detail
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">IoU 跟 NMS 是什麼?</h3>
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">IoU 視覺化(拖預測框)</div>
+        <canvas id="iouCanvas" class="demo-canvas" width="320" height="320" style="cursor: move; display: block; margin: 0 auto;"></canvas>
+        <div class="info-grid" style="margin-top: 14px;">
+          <div class="info-cell"><div class="info-cell-label">IoU</div><div class="info-cell-value" id="iouVal">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">Status</div><div class="info-cell-value" id="iouStatus" style="color: var(--green);">—</div></div>
+        </div>
+        <div style="margin-top: 10px; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-soft);">
+          拖藍色預測框,看跟橘色 ground truth 的 <span class="term" data-term="iou">IoU</span>。IoU &gt; 0.5 算 match。
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">NMS 互動模擬</div>
+        <p style="font-family: 'Kalam', cursive; font-size: 14px; color: var(--ink); line-height: 1.8; margin-bottom: 10px;">
+          模型常會對同一物件預測很多個 box(因為附近的格子都會輸出)。<span class="term" data-term="nms">NMS (Non-Maximum Suppression)</span> 一步步看:
+        </p>
+        <div class="nms-canvas-wrap">
+          <canvas id="nmsCanvas" width="320" height="320" style="border: 2px solid var(--ink); border-radius: 8px; background: var(--cream); display: block;"></canvas>
+        </div>
+        <div class="nms-legend">
+          <div class="nms-legend-item"><div class="nms-legend-dot" style="background: var(--green);"></div> Kept</div>
+          <div class="nms-legend-item"><div class="nms-legend-dot" style="background: var(--red);"></div> Eliminated</div>
+          <div class="nms-legend-item"><div class="nms-legend-dot" style="background: var(--yellow);"></div> Examining</div>
+          <div class="nms-legend-item"><div class="nms-legend-dot" style="background: rgba(74,135,168,0.5);"></div> Pending</div>
+        </div>
+        <div style="margin-top: 12px;">
+          <div class="slider-wrap">
+            <div class="slider-label"><span>IoU Threshold</span><span class="val" id="nmsThreshVal">0.5</span></div>
+            <input type="range" id="nmsThresh" min="0.3" max="0.7" value="0.5" step="0.05">
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top: 10px;">
+          <button class="btn primary" id="nmsStepBtn">⏭ Step</button>
+          <button class="btn" id="nmsAutoBtn">▶ Auto Play</button>
+          <button class="btn danger" id="nmsResetBtn">↺ Reset</button>
+        </div>
+        <div id="nmsStatus" style="margin-top: 10px; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-soft); min-height: 20px;">
+          點 Step 或 Auto Play 開始 NMS 流程。
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼 anchor-free 變主流</div>
+      Anchor-based 需要先用 K-means 對訓練集算出最佳 anchor 形狀,
+      不同任務的最佳 anchor 完全不同(行人偵測 vs 衛星照片偵測 vs 人臉偵測)。
+      Anchor-free 把這負擔丟給模型自己學,簡化 pipeline。<strong>YOLOv8 之後幾乎都改用這個。</strong>
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1506.02640" target="_blank" rel="noopener"><span>YOLOv1 — You Only Look Once</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1804.02767" target="_blank" rel="noopener"><span>YOLOv3 — Multi-scale</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/2004.10934" target="_blank" rel="noopener"><span>YOLOv4 — Bag of Freebies</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://docs.ultralytics.com" target="_blank" rel="noopener"><span>Ultralytics Docs (v5/v8)</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://www.youtube.com/watch?v=n9_XyCGr-MI" target="_blank" rel="noopener"><span>Aladdin Persson: YOLOv1 from scratch</span><span class="resource-tag">影片</span></a>
+      </div>
+    </div>

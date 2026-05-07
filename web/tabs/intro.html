@@ -1,0 +1,145 @@
+    <h2 class="section-title">開場:為什麼需要 CNN?</h2>
+    <span class="section-tag">The Big Question</span>
+    <p class="section-desc">
+      如果你今天要寫一個程式,告訴電腦「<strong>這張圖裡有沒有貓</strong>」,你會怎麼寫?
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">直覺做法?</div>
+        <div class="concept-card-text">「找到尖尖的耳朵 → 貓!」但尖耳朵的東西太多了:狐狸、兔子、紙做的角…</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">顏色判斷?</div>
+        <div class="concept-card-text">「橘色毛 → 貓!」那黑貓呢?那橘色的枕頭呢?人寫規則,永遠寫不完。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Template Matching?</div>
+        <div class="concept-card-text">存一張「標準貓」去比對?但貓有各種姿勢、各種距離、各種品種…</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">答案:讓機器自己學!</div>
+        <div class="concept-card-text">給大量「有貓 / 沒貓」的圖片,讓模型自己學出什麼特徵代表貓。這就是 CNN。</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top: 24px;">
+      <div class="panel-label">傳統方法 vs Deep Learning</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 12px;">
+        <div style="padding: 16px; background: rgba(200, 85, 61, 0.1); border-radius: 8px; border: 1.5px dashed var(--red);">
+          <div style="font-family: 'Caveat', cursive; font-size: 22px; color: var(--red); margin-bottom: 8px;">❌ 傳統方法</div>
+          <p style="font-size: 14px; line-height: 1.7; color: var(--ink-soft);">
+            人類手動設計特徵 (SIFT, HOG, Haar)
+            → 每換一個任務就要重新設計
+            → 永遠有 edge case
+            → 規則越多越脆弱
+          </p>
+        </div>
+        <div style="padding: 16px; background: rgba(106, 155, 94, 0.1); border-radius: 8px; border: 1.5px dashed var(--green);">
+          <div style="font-family: 'Caveat', cursive; font-size: 22px; color: var(--green); margin-bottom: 8px;">✓ CNN / Deep Learning</div>
+          <p style="font-size: 14px; line-height: 1.7; color: var(--ink-soft);">
+            模型自動學習特徵 (end-to-end)
+            → 只要有足夠的資料
+            → 特徵會自動變得越來越抽象
+            → 第 1 層學邊緣 → 中間學紋理 → 最後學物件
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">CNN 為什麼是答案?</h3>
+    <div class="accordion">
+      <div class="accordion-header">1. 局部連接 (Local Connectivity) — 不需要看完整張圖</div>
+      <div class="accordion-body">
+        人類看圖也是先看局部:先注意到「尖尖的形狀」、「毛茸茸的紋理」、「圓圓的眼睛」。
+        CNN 的 kernel 也是一小塊一小塊地看,非常符合圖片的性質。比起 FC 把所有像素混在一起,Conv 保留了「空間關係」。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">2. 權重共享 (Weight Sharing) — 一個偵測器用遍全圖</div>
+      <div class="accordion-body">
+        「貓的眼睛」不管出現在圖的左上角還是右下角,都應該被同一個偵測器抓到。
+        CNN 的同一個 kernel 滑過整張圖 = 相當於共享權重 = 大幅減少參數量。
+        一張 224×224 的圖,如果用 FC 需要 5000 萬參數;用 Conv 3×3 只需要 9 個。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">3. 階層式特徵 (Hierarchical Features) — 從簡單到複雜</div>
+      <div class="accordion-body">
+        多層 Conv 堆疊後:第一層學到邊緣和顏色,第二層組合出紋理和角,第三層以後逐漸出現「耳朵」「眼睛」等部件,最深層才是「貓」這個完整概念。這跟人類視覺皮層 V1→V2→V4→IT 的處理過程驚人地相似。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">4. 平移不變性 (Translation Invariance) — 貓在哪都是貓</div>
+      <div class="accordion-body">
+        因為權重共享加上 pooling,CNN 天生具有一定的平移不變性。貓移到圖片另一邊,模型照樣認得出來。
+        這是 FC 完全做不到的 — FC 必須從零學習「同一個 pattern 出現在不同位置」的所有情況。
+      </div>
+    </div>
+
+    <div class="note" style="margin-top: 32px;">
+      <div class="note-title">本堂課目標</div>
+      從最基本的<strong>卷積</strong>開始,一路走到<strong>YOLO 物件偵測</strong>。
+      每一個概念都有互動 demo 可以玩。重點不是背公式,而是<strong>建立直覺</strong>。
+      <br><br>
+      點上面的 Tab 開始探索吧!建議順序就是從左到右。
+    </div>
+
+    <div class="quiz-box" data-quiz="intro-q1">
+      <div class="quiz-title">小測驗</div>
+      <p style="font-size: 14px; margin-bottom: 12px;">CNN 相比 FC (全連接層) 最大的優勢是什麼?</p>
+      <div class="quiz-option" data-correct="false" data-explanation="精度不一定更高,要看任務和資料量。">精度永遠比較高</div>
+      <div class="quiz-option" data-correct="true" data-explanation=" 因為權重共享,同一個 kernel 只有 9 個參數卻能偵測整張圖的特徵。">參數量大幅減少,利用了圖片的空間結構</div>
+      <div class="quiz-option" data-correct="false" data-explanation="訓練速度取決於很多因素,不一定更快。">訓練速度一定更快</div>
+      <div class="quiz-option" data-correct="false" data-explanation="CNN 不需要人工標籤不太對,supervised CNN 還是需要的。">不需要任何標記資料</div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <h3 class="subhead">CNN 四大優勢 (點擊翻牌)</h3>
+    <div class="flip-card-grid">
+      <div class="flip-card" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+          <div class="flip-card-front">局部連接<br>Local Connectivity</div>
+          <div class="flip-card-back">每個 neuron 只看一小塊區域,模仿人類視覺皮質。參數量從數億降到數千。</div>
+        </div>
+      </div>
+      <div class="flip-card" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+          <div class="flip-card-front">權重共享<br>Weight Sharing</div>
+          <div class="flip-card-back">同一個 kernel 滑遍整張圖。一個 3×3 kernel 永遠只有 9 個參數,不管圖多大。</div>
+        </div>
+      </div>
+      <div class="flip-card" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+          <div class="flip-card-front">階層式特徵<br>Hierarchical Features</div>
+          <div class="flip-card-back">淺層學邊緣 → 中層學紋理 → 深層學物件部件 → 最終辨識完整物體。跟人類視覺皮質 V1→V4→IT 一樣!</div>
+        </div>
+      </div>
+      <div class="flip-card" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+          <div class="flip-card-front">平移不變性<br>Translation Invariance</div>
+          <div class="flip-card-back">貓在左上角跟右下角,CNN 都認得。因為同一個 kernel + pooling = 位置不敏感。FC 完全做不到。</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">配對練習:傳統方法的限制</h3>
+    <div class="match-exercise" id="introMatch">
+      <div class="panel-label">把左邊的傳統方法配對到右邊的限制</div>
+      <div class="match-columns">
+        <div>
+          <div class="match-item" data-match="a" onclick="selectMatch(this,'left')">Template Matching</div>
+          <div class="match-item" data-match="b" onclick="selectMatch(this,'left')">手寫 if-else 規則</div>
+          <div class="match-item" data-match="c" onclick="selectMatch(this,'left')">SIFT / HOG 特徵</div>
+          <div class="match-item" data-match="d" onclick="selectMatch(this,'left')">色彩直方圖比對</div>
+        </div>
+        <div>
+          <div class="match-item" data-match="c" onclick="selectMatch(this,'right')">需要人工設計,換任務就要重來</div>
+          <div class="match-item" data-match="a" onclick="selectMatch(this,'right')">物體姿勢旋轉就失效</div>
+          <div class="match-item" data-match="d" onclick="selectMatch(this,'right')">不同物體可能有相同顏色分布</div>
+          <div class="match-item" data-match="b" onclick="selectMatch(this,'right')">邊界條件寫不完,越多規則越脆弱</div>
+        </div>
+      </div>
+      <div id="matchResult" style="margin-top:12px; font-family:'Patrick Hand',cursive; font-size:14px;"></div>
+      <button class="btn primary" style="margin-top:12px;" onclick="checkMatch()">檢查答案</button>
+    </div>

@@ -1,0 +1,299 @@
+    <h2 class="section-title">優化器遊樂場</h2>
+    <span class="section-tag">Optimizer Playground</span>
+    <p class="section-desc">
+      訓練神經網路的核心:如何在<span class="term" data-term="losslandscape">損失地形</span>上找到最低點。
+      下面可以看不同<span class="term" data-term="optimizer">優化器</span>怎麼走,哪個更快、更穩。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">優化器做什麼?</div>
+        <div class="concept-card-text">根據<span class="term" data-term="gradient">梯度</span>決定怎麼更新參數,目標是讓 <span class="term" data-term="loss">loss</span> 越來越小。就像在一片山谷中找最低點。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼 SGD 不夠?</div>
+        <div class="concept-card-text">Vanilla SGD 對所有參數用同一個 learning rate,遇到狹長峽谷會劇烈震盪,遇到鞍點則會卡住。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">地形比喻</div>
+        <div class="concept-card-text">想像你是一顆球在山坡上滾。SGD 是無慣性的,每步只看當下坡度;Momentum 像有質量,能衝過小丘;Adam 像有 GPS,知道該快還是慢。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">Adaptive vs Non-adaptive</div>
+        <div class="concept-card-text"><strong>Non-adaptive</strong>(SGD、Momentum）: 固定 lr。<strong>Adaptive</strong>（Adam、AdaGrad）: 根據過去梯度自動調整每個參數的 lr。</div>
+      </div>
+    </div>
+
+    <!-- SGD Section -->
+    <h3 class="subhead">SGD — 隨機梯度下降</h3>
+    <div class="panel">
+      <div class="panel-label">Stochastic Gradient Descent</div>
+      <div class="formula-box">
+        <strong>θ</strong> = θ − η ∇L(θ)
+      </div>
+      <p style="font-family: 'Noto Serif TC', serif; font-size: 14px; color: var(--ink); margin: 12px 0;">
+        最簡單的優化器:沿梯度方向走一步,步長 = learning rate η。
+      </p>
+      <div class="step-reveal">
+        <div class="step-reveal-item">
+          <strong>問題 1: 震盪</strong> — 在狹長峽谷中,梯度方向與最低點方向垂直,會來回擺盪。
+        </div>
+        <div class="step-reveal-item">
+          <strong>問題 2: 學習率敏感</strong> — 太大會發散,太小會卡在局部最小值或鞍點。
+        </div>
+        <div class="step-reveal-item">
+          <strong>問題 3: 鞍點</strong> — 在梯度接近零的地方幾乎不動。高維空間中鞍點遠比局部最小值多。
+        </div>
+      </div>
+    </div>
+
+    <!-- Momentum Section -->
+    <h3 class="subhead">SGD + Momentum — 帶慣性的下降</h3>
+    <div class="panel">
+      <div class="panel-label">Momentum accelerates convergence</div>
+      <div class="formula-box">
+        v<sub>t</sub> = μ · v<sub>t−1</sub> − η ∇L(θ)<br>
+        θ = θ + v<sub>t</sub>
+      </div>
+      <p style="font-family: 'Noto Serif TC', serif; font-size: 14px; color: var(--ink); margin: 12px 0;">
+        v 像速度,μ（通常 0.9）讓球「記得之前的方向」。連續朝同一方向的梯度會累積速度,垂直方向的振盪則被抵消。
+      </p>
+      <div class="step-reveal">
+        <div class="step-reveal-item">
+          <strong>比喻:</strong> 一顆有質量的球在斜面上滾,即使小幅上坡也不會馬上停,而是靠慣性衝過去。
+        </div>
+        <div class="step-reveal-item">
+          <strong>效果:</strong> 在峽谷中減少震盪,在平坦處加速通過。
+        </div>
+      </div>
+    </div>
+
+    <!-- NAG Section -->
+    <h3 class="subhead">Nesterov Accelerated Gradient</h3>
+    <div class="panel">
+      <div class="panel-label">Look-ahead momentum</div>
+      <div class="formula-box">
+        v<sub>t</sub> = μ · v<sub>t−1</sub> − η ∇L(θ + μ · v<sub>t−1</sub>)<br>
+        θ = θ + v<sub>t</sub>
+      </div>
+      <p style="font-family: 'Noto Serif TC', serif; font-size: 14px; color: var(--ink); margin: 12px 0;">
+        標準 Momentum 先算梯度再動;NAG <strong>先跳到預測位置再算梯度</strong>。
+        像一個「先看再跳」的智慧球 — 如果前面是上坡,它會提前煞車。
+      </p>
+      <div class="step-reveal">
+        <div class="step-reveal-item">
+          <strong>差異:</strong> 當快接近最低點時,NAG 能更早減速,避免衝過頭。
+        </div>
+        <div class="step-reveal-item">
+          <strong>實務:</strong> 在 PyTorch 中只需 <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--cream); padding: 2px 6px; border-radius: 3px;">SGD(params, lr=0.01, momentum=0.9, nesterov=True)</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adam Section -->
+    <h3 class="subhead">Adam — 自適應矩估計</h3>
+    <div class="panel">
+      <div class="panel-label">Adaptive Moment Estimation</div>
+      <div class="formula-box">
+        m<sub>t</sub> = β₁ · m<sub>t−1</sub> + (1 − β₁) · g<sub>t</sub><br>
+        v<sub>t</sub> = β₂ · v<sub>t−1</sub> + (1 − β₂) · g<sub>t</sub>²<br>
+        m̂<sub>t</sub> = m<sub>t</sub> / (1 − β₁<sup>t</sup>)<br>
+        v̂<sub>t</sub> = v<sub>t</sub> / (1 − β₂<sup>t</sup>)<br>
+        θ = θ − η · m̂<sub>t</sub> / (√v̂<sub>t</sub> + ε)
+      </div>
+      <div class="step-reveal">
+        <div class="step-reveal-item">
+          <strong>m<sub>t</sub> (第一矩):</strong> 梯度的指數移動平均 → 像 Momentum,記住方向。
+        </div>
+        <div class="step-reveal-item">
+          <strong>v<sub>t</sub> (第二矩):</strong> 梯度平方的指數移動平均 → 記住幅度/方差。
+        </div>
+        <div class="step-reveal-item">
+          <strong>Bias Correction:</strong> 初期 m 和 v 都偏向 0（因為初始值是 0），除以 (1 − β^t) 修正。
+        </div>
+        <div class="step-reveal-item">
+          <strong>更新規則:</strong> 方差大的維度步長小(不確定時走慢),方差小的維度步長大(確定時走快)。
+        </div>
+      </div>
+      <p style="font-family: 'Noto Serif TC', serif; font-size: 14px; color: var(--ink); margin: 12px 0;">
+        預設超參數: β₁ = 0.9, β₂ = 0.999, ε = 1e-8。幾乎所有 DL 任務的第一選擇。
+      </p>
+      <div style="margin-top: 14px; padding: 12px 14px; background: rgba(74, 135, 168, 0.1); border: 1.5px dashed var(--blue); border-radius: 6px;">
+        <div style="font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-bottom: 4px;">PyTorch:</div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink); white-space: pre;">optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+for epoch in range(epochs):
+    loss = criterion(model(x), y)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()</div>
+      </div>
+    </div>
+
+    <!-- AdamW Section -->
+    <h3 class="subhead">AdamW — 解耦權重衰減</h3>
+    <div class="panel">
+      <div class="panel-label">Decoupled Weight Decay Regularization</div>
+      <div class="formula-box">
+        θ = θ − η · (m̂<sub>t</sub> / (√v̂<sub>t</sub> + ε) + λ · θ)
+      </div>
+      <p style="font-family: 'Noto Serif TC', serif; font-size: 14px; color: var(--ink); margin: 12px 0;">
+        Adam + L2 regularization 有個問題: L2 項會被 adaptive learning rate 縮放,導致大梯度參數的正則化反而弱。
+        AdamW 把 weight decay 從梯度更新中解耦出來,直接對權重做衰減,效果更穩定。
+      </p>
+      <div class="step-reveal">
+        <div class="step-reveal-item">
+          <strong>Adam + L2:</strong> 在梯度 g 中加入 λθ,然後 adaptive 縮放。正則化強度不均勻。
+        </div>
+        <div class="step-reveal-item">
+          <strong>AdamW:</strong> 先做 Adam 更新,再額外減去 η·λ·θ。正則化不受 adaptive 影響。
+        </div>
+        <div class="step-reveal-item">
+          <strong>實務:</strong> 現在大多數模型(BERT、GPT、ViT)訓練都用 AdamW。
+        </div>
+      </div>
+      <div style="margin-top: 14px; padding: 12px 14px; background: rgba(74, 135, 168, 0.1); border: 1.5px dashed var(--blue); border-radius: 6px;">
+        <div style="font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-bottom: 4px;">PyTorch:</div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink);">optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)</div>
+      </div>
+    </div>
+
+    <!-- Main Interactive Demo -->
+    <h3 class="subhead">Optimizer Race — 優化器競速</h3>
+    <div class="panel">
+      <div class="panel-label">在 2D 損失地形上看誰最快到最低點</div>
+      <div class="controls-box" style="border: none; padding: 0; margin-bottom: 14px;">
+        <div class="controls-grid">
+          <div class="slider-wrap">
+            <div class="slider-label"><span>Learning Rate</span><span class="val" id="optLrVal">0.020</span></div>
+            <input type="range" id="optLrSlider" min="1" max="100" value="20" step="1">
+            <div class="slider-help">步長;太大發散,太小太慢</div>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-label"><span>Momentum (μ)</span><span class="val" id="optMomVal">0.90</span></div>
+            <input type="range" id="optMomSlider" min="0" max="99" value="90" step="1">
+            <div class="slider-help">SGD+Momentum 用的動量係數</div>
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-label"><span>地形選擇</span></div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="btn tiny" id="optLandValley">Valley 峽谷</button>
+              <button class="btn tiny" id="optLandSaddle">Saddle 鞍點</button>
+              <button class="btn tiny" id="optLandMulti">Multi-minima</button>
+            </div>
+            <div class="slider-help">不同地形考驗不同能力</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center;">
+          <button class="btn primary" id="optStart">▶ Start</button>
+          <button class="btn danger" id="optReset">↺ Reset</button>
+          <label style="font-family: 'Kalam', cursive; font-size: 13px; display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="optShowSGD" checked><span style="color: var(--red);">● SGD</span></label>
+          <label style="font-family: 'Kalam', cursive; font-size: 13px; display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="optShowMom" checked><span style="color: var(--green);">● Momentum</span></label>
+          <label style="font-family: 'Kalam', cursive; font-size: 13px; display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="optShowAdam" checked><span style="color: var(--blue);">● Adam</span></label>
+        </div>
+        <div class="slider-help" style="margin-top: 6px;">點擊 canvas 設定起始點</div>
+      </div>
+      <canvas id="optCanvas" width="560" height="400" style="width: 100%; max-width: 560px; border-radius: 10px; cursor: crosshair; display: block; margin: 0 auto; box-shadow: 0 2px 12px rgba(0,0,0,0.08);"></canvas>
+      <div class="info-grid" style="margin-top: 14px;">
+        <div class="info-cell"><div class="info-cell-label">Iterations</div><div class="info-cell-value" id="optIter">0</div></div>
+        <div class="info-cell"><div class="info-cell-label" style="color: var(--red);">SGD Loss</div><div class="info-cell-value" id="optLossSGD">—</div></div>
+        <div class="info-cell"><div class="info-cell-label" style="color: var(--green);">Momentum Loss</div><div class="info-cell-value" id="optLossMom">—</div></div>
+        <div class="info-cell"><div class="info-cell-label" style="color: var(--blue);">Adam Loss</div><div class="info-cell-value" id="optLossAdam">—</div></div>
+      </div>
+    </div>
+
+    <!-- Learning Rate Scheduler -->
+    <h3 class="subhead">Learning Rate Scheduler — 學習率排程</h3>
+    <div class="panel">
+      <div class="panel-label">訓練過程中動態調整 LR</div>
+      <p style="font-family: 'Noto Serif TC', serif; font-size: 14px; color: var(--ink); margin-bottom: 12px;">
+        固定 LR 不是最優策略。常見做法:先用大 LR 快速收斂,後期小 LR 精修。
+      </p>
+      <div class="controls-box" style="border: none; padding: 0; margin-bottom: 12px;">
+        <div class="controls-grid">
+          <div class="slider-wrap">
+            <div class="slider-label"><span>Total Epochs</span><span class="val" id="schedEpochVal">100</span></div>
+            <input type="range" id="schedEpochSlider" min="20" max="300" value="100" step="10">
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-label"><span>Warmup Epochs</span><span class="val" id="schedWarmupVal">10</span></div>
+            <input type="range" id="schedWarmupSlider" min="0" max="50" value="10" step="1">
+          </div>
+          <div class="slider-wrap">
+            <div class="slider-label"><span>顯示排程</span></div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <label style="font-family: 'Kalam', cursive; font-size: 12px; display: flex; align-items: center; gap: 3px;"><input type="checkbox" class="schedCheck" data-sched="step" checked><span style="color: var(--red);">StepLR</span></label>
+              <label style="font-family: 'Kalam', cursive; font-size: 12px; display: flex; align-items: center; gap: 3px;"><input type="checkbox" class="schedCheck" data-sched="cosine" checked><span style="color: var(--blue);">Cosine</span></label>
+              <label style="font-family: 'Kalam', cursive; font-size: 12px; display: flex; align-items: center; gap: 3px;"><input type="checkbox" class="schedCheck" data-sched="onecycle" checked><span style="color: var(--green);">OneCycle</span></label>
+              <label style="font-family: 'Kalam', cursive; font-size: 12px; display: flex; align-items: center; gap: 3px;"><input type="checkbox" class="schedCheck" data-sched="warmcos" checked><span style="color: var(--purple);">Warmup+Cosine</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <canvas id="schedCanvas" width="560" height="220" style="width: 100%; max-width: 560px; border-radius: 10px; display: block; margin: 0 auto; background: var(--paper-light); box-shadow: 0 2px 12px rgba(0,0,0,0.06);"></canvas>
+    </div>
+
+    <!-- Comparison Table -->
+    <h3 class="subhead">優化器比較表</h3>
+    <div class="compare-table-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Optimizer</th>
+            <th>Adaptive?</th>
+            <th>Memory</th>
+            <th>適合場景</th>
+            <th>常見 LR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>SGD</td><td>✗</td><td>1× params</td><td>CNN 分類(搭 scheduler)</td><td>0.01 ~ 0.1</td></tr>
+          <tr><td>SGD + Momentum</td><td>✗</td><td>2× params</td><td>大部分 CV 任務</td><td>0.01 ~ 0.1</td></tr>
+          <tr><td>Adam</td><td>✓</td><td>3× params</td><td>NLP、GAN、快速原型</td><td>1e-3 ~ 3e-4</td></tr>
+          <tr><td>AdamW</td><td>✓</td><td>3× params</td><td>Transformers (BERT, ViT, GPT)</td><td>1e-4 ~ 5e-4</td></tr>
+          <tr><td>RMSProp</td><td>✓</td><td>2× params</td><td>RNN、RL</td><td>1e-3</td></tr>
+          <tr><td>Adagrad</td><td>✓</td><td>2× params</td><td>稀疏特徵 (NLP embeddings)</td><td>0.01</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Quiz -->
+    <div class="quiz-box">
+      <div class="quiz-title">小測驗 ✎</div>
+      <p style="font-family: 'Noto Serif TC', serif; font-size: 14px; margin-bottom: 10px;">1. Adam 的「adaptive」是指什麼?</p>
+      <div class="quiz-option" data-correct="false">A. 自動調整 batch size</div>
+      <div class="quiz-option" data-correct="true">B. 根據每個參數過去的梯度大小,自動調整該參數的學習率</div>
+      <div class="quiz-option" data-correct="false">C. 自動選擇 loss function</div>
+      <div class="quiz-feedback" id="quizFb1"></div>
+
+      <p style="font-family: 'Noto Serif TC', serif; font-size: 14px; margin: 16px 0 10px;">2. 為什麼 Momentum 能減少峽谷中的震盪?</p>
+      <div class="quiz-option" data-correct="false">A. 因為它用更小的學習率</div>
+      <div class="quiz-option" data-correct="false">B. 因為它隨機跳到別的位置</div>
+      <div class="quiz-option" data-correct="true">C. 因為垂直方向的梯度正負交替會互相抵消,而目標方向的梯度持續累積</div>
+      <div class="quiz-feedback" id="quizFb2"></div>
+
+      <p style="font-family: 'Noto Serif TC', serif; font-size: 14px; margin: 16px 0 10px;">3. AdamW 與 Adam + L2 的核心差異是?</p>
+      <div class="quiz-option" data-correct="true">A. AdamW 的 weight decay 不被 adaptive lr 縮放</div>
+      <div class="quiz-option" data-correct="false">B. AdamW 沒有 bias correction</div>
+      <div class="quiz-option" data-correct="false">C. AdamW 不需要設定 β₁ 和 β₂</div>
+      <div class="quiz-feedback" id="quizFb3"></div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">實務建議</div>
+      不確定用什麼的時候:<br>
+      • CV 任務（圖像分類、物件偵測）→ <strong>SGD + Momentum + CosineAnnealing</strong>,已有幾十年的 recipe 最穩。<br>
+      • NLP / Transformer / 新架構 → <strong>AdamW + Warmup + Cosine decay</strong>,收斂快、不需太多調參。<br>
+      • 如果有預算調 hyperparameter → SGD 能找到更好的泛化,但需要更多 epochs。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1412.6980" target="_blank" rel="noopener"><span>Adam: A Method for Stochastic Optimization (Kingma & Ba, 2014)</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1711.05101" target="_blank" rel="noopener"><span>Decoupled Weight Decay Regularization (Loshchilov & Hutter, 2017)</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1609.04747" target="_blank" rel="noopener"><span>An overview of gradient descent optimization algorithms (Ruder, 2016)</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://cs231n.github.io/neural-networks-3/#update" target="_blank" rel="noopener"><span>Stanford CS231n — Optimization</span><span class="resource-tag">課程</span></a>
+        <a class="resource-link" href="https://pytorch.org/docs/stable/optim.html" target="_blank" rel="noopener"><span>PyTorch Optimizers 官方文件</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://www.youtube.com/watch?v=mdKjMPmcWjY" target="_blank" rel="noopener"><span>Andrej Karpathy: Training Neural Networks</span><span class="resource-tag">影片</span></a>
+      </div>
+    </div>

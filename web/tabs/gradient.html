@@ -1,0 +1,317 @@
+    <style>
+      .lr-compare-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+      @media (max-width: 800px) { .lr-compare-grid { grid-template-columns: 1fr; } }
+    </style>
+
+    <h2 class="section-title">梯度消失現場</h2>
+    <span class="section-tag">Gradient Vanishing</span>
+    <p class="section-desc">
+      拉動下面的 slider 改變網路深度,看左右兩種架構的<span class="term" data-term="gradient">梯度</span>怎麼變化。
+      <strong>亮 = 梯度大(學得到)</strong>,
+      <strong>暗 = 梯度接近 0(學不到)</strong>。
+      還可以按 ⏵ 看反向傳播的動畫。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">梯度是什麼</div>
+        <div class="concept-card-text">告訴模型「往哪個方向調參數能讓 loss 變小」。沒有梯度 = 不知道怎麼學。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">為什麼會消失</div>
+        <div class="concept-card-text">梯度從輸出層往輸入層傳時,每經過一層就<span class="term" data-term="chainrule">乘一次</span>偏導數。如果都小於 1,深層網路前幾層的梯度會指數衰減到 0。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">ResNet 怎麼解</div>
+        <div class="concept-card-text">加 <span class="term" data-term="skip">skip connection</span> 讓梯度有捷徑可走,backward 時不會被中間層稀釋掉。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">影響有多大</div>
+        <div class="concept-card-text">原本 30 層就訓練不起來,有 ResNet 後可以堆到 152 層、甚至 <span class="term" data-term="resnet1k">1000 層</span>還能訓練。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>網路深度</span><span class="val" id="depthVal">20 layers</span></div>
+          <input type="range" id="depthSlider" min="5" max="60" value="20" step="1">
+          <div class="slider-help">越深問題越明顯</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>每層的梯度因子</span><span class="val" id="factorVal">0.50</span></div>
+          <input type="range" id="factorSlider" min="20" max="95" value="50" step="5">
+          <div class="slider-help">每層的偏導數平均大小;越小衰減越快</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>反向傳播動畫</span></div>
+          <button class="btn primary" id="bpAnim">⏵ 播放動畫</button>
+          <div class="slider-help">看梯度從輸出層怎麼一路衰減</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">Plain CNN（沒有 skip connection）</div>
+        <div class="layers-vis" id="plainLayers"></div>
+        <div class="layers-label">
+          <span>← input 前面</span>
+          <span>output 後面 →</span>
+        </div>
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">第一層梯度</div><div class="info-cell-value" id="plainFirst">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">有效層數</div><div class="info-cell-value" id="plainEff">—</div></div>
+        </div>
+        <div style="margin-top: 12px; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint);">
+          ※ 有效層 = 梯度 &gt; 0.01 的層
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">ResNet（有 skip connection）</div>
+        <div class="layers-vis" id="resLayers"></div>
+        <div class="layers-label">
+          <span>← input 前面</span>
+          <span>output 後面 →</span>
+        </div>
+        <div class="info-grid">
+          <div class="info-cell"><div class="info-cell-label">第一層梯度</div><div class="info-cell-value" id="resFirst">—</div></div>
+          <div class="info-cell"><div class="info-cell-label">有效層數</div><div class="info-cell-value" id="resEff">—</div></div>
+        </div>
+        <div style="margin-top: 12px; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint);">
+          ※ 每個 residual block 都有 +1 的 identity path
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">數學直覺</div>
+      梯度 ≈ factor^depth。當 factor &lt; 1 且 depth 大,結果指數衰減到 0。<br>
+      ResNet 的 skip connection 讓<span class="term" data-term="backprop">反向傳播</span>多一條 +1 的路徑,等於 (factor + 1)^depth。
+      <strong>這就是為什麼可以蓋到 152 層還訓練得起來。</strong>
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1512.03385" target="_blank" rel="noopener"><span>ResNet 原論文 (He et al., 2015)</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1603.05027" target="_blank" rel="noopener"><span>Pre-activation ResNet v2</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://www.youtube.com/watch?v=GWt6Fu05voI" target="_blank" rel="noopener"><span>Yannic Kilcher: ResNet 解讀</span><span class="resource-tag">影片</span></a>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SECTION 2: Gradient Descent Visualizer
+         ═══════════════════════════════════════════════════════════════ -->
+    <div style="margin-top: 64px; border-top: 2px dashed var(--line); padding-top: 48px;">
+
+    <h2 class="section-title">梯度下降視覺化</h2>
+    <span class="section-tag">Gradient Descent Visualizer</span>
+    <p class="section-desc">
+      在 2D Loss Landscape 上點擊放置起點,觀察<span class="term" data-term="gradient">梯度下降</span>如何沿著等高線走向最小值。
+      拉動 slider 調整 learning rate 和 momentum,親身感受為什麼超參數這麼重要。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">梯度下降</div>
+        <div class="concept-card-text">反覆計算 loss 對參數的偏導數,朝著 loss 下降最快的方向更新參數。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Learning Rate</div>
+        <div class="concept-card-text">每一步走多大。太大會跳過最低點、甚至發散;太小會走很慢、容易卡在局部最小。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">Momentum</div>
+        <div class="concept-card-text">累積過去的梯度方向,像球帶有慣性,能衝過小山丘和鞍點。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">Loss Landscape</div>
+        <div class="concept-card-text">把 loss 想像成一片山谷地形;訓練就是讓球滾到最低處。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Learning Rate</span><span class="val" id="gdLrVal">0.050</span></div>
+          <input type="range" id="gdLrSlider" min="1" max="100" value="50" step="1">
+          <div class="slider-help">控制每步大小 (0.001 ~ 1.0)</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Momentum</span><span class="val" id="gdMomVal">0.00</span></div>
+          <input type="range" id="gdMomSlider" min="0" max="99" value="0" step="1">
+          <div class="slider-help">慣性係數 (0 ~ 0.99)</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Loss 函數</span></div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn tiny" id="gdFnBowl" data-active="true">Bowl</button>
+            <button class="btn tiny" id="gdFnRosen">Rosenbrock</button>
+            <button class="btn tiny" id="gdFnSaddle">Saddle</button>
+            <button class="btn tiny" id="gdFnRastrigin">Rastrigin</button>
+          </div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>操作</span></div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn primary" id="gdReset">↺ 重置</button>
+            <button class="btn" id="gdClear">清除軌跡</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom: 24px;">
+      <div class="panel-label">Loss Landscape — 點擊放置起點</div>
+      <div style="display: flex; justify-content: center;">
+        <canvas id="gdCanvas" class="demo-canvas" width="480" height="480" style="cursor: crosshair; width: 100%; max-width: 480px; height: auto;"></canvas>
+      </div>
+      <div class="info-grid" style="margin-top: 16px;">
+        <div class="info-cell"><div class="info-cell-label">Step</div><div class="info-cell-value" id="gdStep">0</div></div>
+        <div class="info-cell"><div class="info-cell-label">Current Loss</div><div class="info-cell-value" id="gdLoss">—</div></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">觀察重點</div>
+      <ul style="margin-top: 8px; padding-left: 20px; line-height: 2;">
+        <li>Learning rate 太大 → 軌跡會<strong>跳來跳去</strong>甚至飛出畫面</li>
+        <li>Learning rate 太小 → 走很慢,可能<strong>卡在鞍點</strong></li>
+        <li>加 momentum → 能幫忙衝過<strong>平坦區域</strong></li>
+        <li>Rosenbrock 函數有一個狹長山谷,特別難收斂</li>
+      </ul>
+    </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SECTION 3: Learning Rate Effect Demo
+         ═══════════════════════════════════════════════════════════════ -->
+    <div style="margin-top: 64px; border-top: 2px dashed var(--line); padding-top: 48px;">
+
+    <h2 class="section-title">Learning Rate 效果比較</h2>
+    <span class="section-tag">LR Effect Demo</span>
+    <p class="section-desc">
+      三條平行動畫同時跑:分別使用太小、剛好、太大的 learning rate。
+      觀察球的步伐差異就能直觀理解為什麼要精心調整 LR。
+    </p>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>動畫速度</span><span class="val" id="lrSpeedVal">1.0x</span></div>
+          <input type="range" id="lrSpeedSlider" min="1" max="5" value="2" step="1">
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>控制</span></div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn primary" id="lrPlayBtn">⏵ 播放</button>
+            <button class="btn" id="lrResetBtn">↺ 重置</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lr-compare-grid">
+      <div class="panel" style="border-left: 5px solid var(--blue);">
+        <div class="panel-label" style="font-size: 18px;">LR = 0.01 (太小)</div>
+        <canvas id="lrSmallCanvas" class="demo-canvas" width="240" height="180" style="width: 100%; height: auto;"></canvas>
+        <div style="text-align: center; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-top: 8px;">蝸牛速度,迭代多才到</div>
+      </div>
+      <div class="panel" style="border-left: 5px solid var(--green);">
+        <div class="panel-label" style="font-size: 18px;">LR = 0.1 (剛好)</div>
+        <canvas id="lrGoodCanvas" class="demo-canvas" width="240" height="180" style="width: 100%; height: auto;"></canvas>
+        <div style="text-align: center; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-top: 8px;">穩定收斂 ✓</div>
+      </div>
+      <div class="panel" style="border-left: 5px solid var(--red);">
+        <div class="panel-label" style="font-size: 18px;">LR = 0.9 (太大)</div>
+        <canvas id="lrBigCanvas" class="demo-canvas" width="240" height="180" style="width: 100%; height: auto;"></canvas>
+        <div style="text-align: center; font-family: 'Patrick Hand', cursive; font-size: 13px; color: var(--ink-faint); margin-top: 8px;">震盪或發散!</div>
+      </div>
+    </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SECTION 4: Backpropagation Chain Rule Visualization
+         ═══════════════════════════════════════════════════════════════ -->
+    <div style="margin-top: 64px; border-top: 2px dashed var(--line); padding-top: 48px;">
+
+    <h2 class="section-title">反向傳播 Chain Rule</h2>
+    <span class="section-tag">Backprop Visualization</span>
+    <p class="section-desc">
+      點擊下方的每一層,看梯度是怎麼透過<span class="term" data-term="chainrule">連鎖律</span>
+      一路從 Loss 乘回到第一層。箭頭的粗細代表梯度的大小。
+    </p>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>層數</span><span class="val" id="bpLayerVal">5</span></div>
+          <input type="range" id="bpLayerSlider" min="3" max="8" value="5" step="1">
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>動畫</span></div>
+          <button class="btn primary" id="bpChainPlay">⏵ 播放 Chain Rule</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom: 24px; overflow-x: auto;">
+      <div class="panel-label">反向傳播流程 — 點擊各層查看</div>
+      <div id="bpChainVis" style="display: flex; align-items: center; justify-content: center; gap: 0; padding: 32px 16px; min-height: 200px; position: relative;"></div>
+      <div id="bpChainInfo" style="margin-top: 16px; padding: 14px 18px; background: rgba(74, 135, 168, 0.1); border: 1.5px dashed var(--blue); border-radius: 8px; font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink); min-height: 48px;">
+        點擊任一層查看梯度計算過程
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">Chain Rule 核心公式</div>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; margin-top: 8px; text-align: center;">
+        ∂L/∂w₁ = (∂L/∂aₙ) × (∂aₙ/∂aₙ₋₁) × ... × (∂a₂/∂a₁) × (∂a₁/∂w₁)
+      </div>
+      <p style="margin-top: 12px;">
+        每經過一層就<strong>乘一次局部梯度</strong>。如果每層的局部梯度都 &lt; 1,乘很多次後接近 0 → 梯度消失。
+        反之都 &gt; 1 → 梯度爆炸。
+      </p>
+    </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SECTION 5: Quiz
+         ═══════════════════════════════════════════════════════════════ -->
+    <div style="margin-top: 64px; border-top: 2px dashed var(--line); padding-top: 48px;">
+
+    <h2 class="section-title">小測驗</h2>
+    <span class="section-tag">Quick Quiz</span>
+
+    <div class="quiz-box" id="gdQuiz1">
+      <div class="quiz-title">Q1: Learning rate 太大會發生什麼?</div>
+      <div class="quiz-option" data-correct="false">收斂很慢但一定能到最小值</div>
+      <div class="quiz-option" data-correct="true">Loss 震盪甚至發散,無法收斂</div>
+      <div class="quiz-option" data-correct="false">跟 momentum 一樣的效果</div>
+      <div class="quiz-option" data-correct="false">不影響訓練結果</div>
+      <div class="quiz-feedback" id="gdQuiz1Fb"></div>
+    </div>
+
+    <div class="quiz-box" id="gdQuiz2" style="margin-top: 20px;">
+      <div class="quiz-title">Q2: Momentum 的主要作用是?</div>
+      <div class="quiz-option" data-correct="false">減少模型參數量</div>
+      <div class="quiz-option" data-correct="false">增加 learning rate</div>
+      <div class="quiz-option" data-correct="true">累積歷史梯度方向,幫助跨過平坦區域和鞍點</div>
+      <div class="quiz-option" data-correct="false">讓梯度消失變嚴重</div>
+      <div class="quiz-feedback" id="gdQuiz2Fb"></div>
+    </div>
+
+    <div class="quiz-box" id="gdQuiz3" style="margin-top: 20px;">
+      <div class="quiz-title">Q3: Chain Rule 中梯度消失的原因?</div>
+      <div class="quiz-option" data-correct="false">Loss function 太複雜</div>
+      <div class="quiz-option" data-correct="true">每層局部梯度 &lt; 1,連乘後指數衰減到 0</div>
+      <div class="quiz-option" data-correct="false">Learning rate 設太大</div>
+      <div class="quiz-option" data-correct="false">Batch size 太小</div>
+      <div class="quiz-feedback" id="gdQuiz3Fb"></div>
+    </div>
+
+    </div>

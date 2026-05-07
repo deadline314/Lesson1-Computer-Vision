@@ -1,0 +1,105 @@
+    <h2 class="section-title">PyTorch 模型組裝</h2>
+    <span class="section-tag">拖拉式 nn.Module Builder</span>
+    <p class="section-desc">
+      拖左邊的元件到中間組成一個 CNN,右邊會即時生成對應的 <span class="term" data-term="pytorch">PyTorch</span> code。
+      預設 input 是 (B, 3, 224, 224)。可以滑鼠移到 layer 名稱看每種 layer 在做什麼。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">nn.Module</div>
+        <div class="concept-card-text">PyTorch 所有模型的基礎類別。<span class="term" data-term="nnmodule">繼承它就能管理參數、自動 backward</span>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">__init__ vs forward</div>
+        <div class="concept-card-text">__init__ 定義「有什麼零件」,forward 定義「怎麼組起來」。<span class="term" data-term="forward">backward 完全自動</span>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">看 shape 變化</div>
+        <div class="concept-card-text">每加一層,<span class="term" data-term="shape">看 channel 跟空間尺寸怎麼變</span>。經典 pattern 是「channel 翻倍,空間減半」。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">參數量 = 模型大小</div>
+        <div class="concept-card-text">下面會即時算總參數量,隨時看模型多大。Conv 比 FC 省非常多。</div>
+      </div>
+    </div>
+
+    <div class="builder-grid">
+      <div>
+        <div class="panel-label">零件庫(可拖拉或點擊)</div>
+        <div class="palette" id="palette">
+          <div class="palette-item term" draggable="true" data-type="Conv" data-term="layer-conv">
+            <div class="palette-item-label">Conv2d 3×3</div>
+            <div class="palette-item-hint">+padding=1, stride=1</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="ConvDown" data-term="layer-convdown">
+            <div class="palette-item-label">Conv2d 3×3 ↓</div>
+            <div class="palette-item-hint">stride=2 下採樣</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="BN" data-term="layer-bn">
+            <div class="palette-item-label">BatchNorm2d</div>
+            <div class="palette-item-hint">穩定訓練</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="ReLU" data-term="layer-relu">
+            <div class="palette-item-label">ReLU</div>
+            <div class="palette-item-hint">非線性激活</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="MaxPool" data-term="layer-maxpool">
+            <div class="palette-item-label">MaxPool 2×2</div>
+            <div class="palette-item-hint">空間下採樣</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="GAP" data-term="layer-gap">
+            <div class="palette-item-label">GlobalAvgPool</div>
+            <div class="palette-item-hint">壓成 1×1</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="Flatten" data-term="layer-flatten">
+            <div class="palette-item-label">Flatten</div>
+            <div class="palette-item-hint">攤平成 1D</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="FC" data-term="layer-fc">
+            <div class="palette-item-label">Linear (FC)</div>
+            <div class="palette-item-hint">最後分類</div>
+          </div>
+          <div class="palette-item term" draggable="true" data-type="Residual" data-term="layer-residual">
+            <div class="palette-item-label">Residual Block</div>
+            <div class="palette-item-hint">含 skip connection</div>
+          </div>
+        </div>
+        <button id="clearBtn" class="btn danger" style="margin-top: 14px; width: 100%;">Clear All</button>
+        <button id="presetBtn" class="btn primary" style="margin-top: 8px; width: 100%;">Load ResNet-mini</button>
+        <button id="presetVgg" class="btn" style="margin-top: 8px; width: 100%;">Load VGG-style</button>
+      </div>
+
+      <div>
+        <div class="panel-label">你的模型 · 每層 shape</div>
+        <div class="stack" id="stack">
+          <div class="stack-empty">把左邊的 layer 拖過來,或直接點擊</div>
+        </div>
+        <div class="params-display">
+          <span>Total parameters</span>
+          <span class="value" id="paramCount">0</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel-label">PyTorch Code（自動生成）</div>
+        <pre class="code-output" id="codeOutput"><span class="com"># 拖 layer 進來,code 會自動生成</span></pre>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">觀察 shape 變化</div>
+      每加一層,看 channel 數和空間尺寸怎麼變。經典 CNN 的 pattern 是「<strong>channel 翻倍,空間減半</strong>」 —
+      這樣每層的計算量大致守恆,而且高階特徵需要更多 channel 來表達。<br><br>
+      試試看搭一個 Conv → BN → ReLU 的 block,然後加 MaxPool,觀察 shape 變化。
+      或直接點「Load ResNet-mini」看一個簡化版的 ResNet 長什麼樣。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://docs.pytorch.org/tutorials/beginner/blitz/neural_networks_tutorial.html" target="_blank" rel="noopener"><span>PyTorch — Neural Networks Tutorial</span><span class="resource-tag">教學</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/nn.html" target="_blank" rel="noopener"><span>torch.nn — All Layers Reference</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py" target="_blank" rel="noopener"><span>Official ResNet Source Code</span><span class="resource-tag">原始碼</span></a>
+      </div>
+    </div>

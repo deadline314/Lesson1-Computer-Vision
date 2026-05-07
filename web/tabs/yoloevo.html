@@ -1,0 +1,271 @@
+    <h2 class="section-title">YOLO 演進全紀錄</h2>
+    <span class="section-tag">v1 → v8 · 每一代在解決什麼問題</span>
+    <p class="section-desc">
+      YOLO 系列從 2016 的 v1 到 2023 的 v8,八代演進各有突破。下面用表格 + 手風琴逐一介紹。
+    </p>
+
+    <h3 class="subhead">版本比較總覽</h3>
+    <div class="compare-table-wrap">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>Year</th>
+            <th>Backbone</th>
+            <th>Key Innovation</th>
+            <th>Grid</th>
+            <th>Anchor</th>
+            <th>mAP (COCO)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>v1</td><td>2016</td><td>自定義 24-layer</td><td>One-stage 先驅</td><td>7×7</td><td>無</td><td>63.4 (VOC)</td></tr>
+          <tr><td>v2</td><td>2017</td><td>Darknet-19</td><td>Anchor boxes + BN</td><td>13×13</td><td>5</td><td>48.1</td></tr>
+          <tr><td>v3</td><td>2018</td><td>Darknet-53</td><td>Multi-scale (FPN-like)</td><td>13/26/52</td><td>9 (3×3)</td><td>55.3</td></tr>
+          <tr><td>v4</td><td>2020</td><td>CSPDarknet-53</td><td>BoF + BoS + CIoU</td><td>多尺度</td><td>9</td><td>65.7</td></tr>
+          <tr><td>v5</td><td>2020</td><td>CSPDarknet (PyTorch)</td><td>工業部署、5 sizes</td><td>多尺度</td><td>9</td><td>~68</td></tr>
+          <tr><td>v6</td><td>2022</td><td>EfficientRep</td><td>RepVGG 重參數化</td><td>多尺度</td><td>Anchor-free</td><td>~71</td></tr>
+          <tr><td>v7</td><td>2022</td><td>E-ELAN</td><td>Planned re-param</td><td>多尺度</td><td>Anchor-based</td><td>56.8 AP</td></tr>
+          <tr><td>v8</td><td>2023</td><td>C2f backbone</td><td>DFL + TAL + Multi-task</td><td>多尺度</td><td>Anchor-free</td><td>53.9 AP</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="subhead">各版本詳細解析</h3>
+
+    <div class="accordion">
+      <div class="accordion-header">YOLOv1 (2016) — One-stage 偵測的開山之作</div>
+      <div class="accordion-body">
+        <p><strong>核心思想:</strong>把偵測問題轉成「回歸問題」,一次看完整張圖就預測所有物件。</p>
+        <p style="margin-top: 8px;"><strong>架構:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li>輸入: 448 × 448</li>
+          <li>24 層 conv + 2 層 FC</li>
+          <li>輸出: 7 × 7 × 30 tensor</li>
+          <li>每個 cell 預測 2 個 box (x, y, w, h, conf) + 20 class probs</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>Loss 函數:</strong>MSE 形式,含有位置 loss、confidence loss、class loss,用 λ 平衡各項。</p>
+        <p style="margin-top: 8px;"><strong>限制:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li>每格只能偵測 1 個物件 → 密集物件漏偵測</li>
+          <li>沒有 anchor → 對不同比例物件泛化差</li>
+          <li>小物件偵測差(7×7 grid 太粗)</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>意義:</strong>證明 real-time detection 可行,45 FPS!</p>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="accordion-header">YOLOv2 / YOLO9000 (2017) — 七大改進</div>
+      <div class="accordion-body">
+        <p><strong>Backbone:</strong> Darknet-19 (19 conv + 5 maxpool)</p>
+        <p style="margin-top: 8px;"><strong>七大改進表:</strong></p>
+        <div class="compare-table-wrap" style="margin-top: 8px;">
+          <table class="compare-table">
+            <thead><tr><th>改進</th><th>效果</th></tr></thead>
+            <tbody>
+              <tr><td>Batch Normalization</td><td>+2% mAP,可移除 Dropout</td></tr>
+              <tr><td>High Resolution Classifier</td><td>先用 448×448 finetune backbone</td></tr>
+              <tr><td>Anchor Boxes</td><td>recall 從 81% → 88%</td></tr>
+              <tr><td>Dimension Clusters (K-means)</td><td>找最佳 anchor 形狀</td></tr>
+              <tr><td>Direct Location Prediction</td><td>穩定訓練,用 sigmoid 限制偏移</td></tr>
+              <tr><td>Fine-Grained Features</td><td>passthrough layer,小物件偵測改善</td></tr>
+              <tr><td>Multi-Scale Training</td><td>訓練時隨機切換輸入尺寸 (320~608)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top: 8px;"><strong>Anchor 機制:</strong>用 K-means 在訓練集的 GT box 上跑,找出 5 個最有代表性的 (w, h) 比例。模型預測相對 anchor 的偏移量 (tx, ty, tw, th),而非絕對座標。</p>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="accordion-header">YOLOv3 (2018) — 多尺度預測登場</div>
+      <div class="accordion-body">
+        <p><strong>Backbone:</strong> Darknet-53(53 層,含 residual connection)</p>
+        <p style="margin-top: 8px;"><strong>核心改進:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li><strong>Multi-scale prediction:</strong> 在 3 個尺度做預測 (13×13, 26×26, 52×52)</li>
+          <li>類似 FPN 的結構:深層 feature 上採樣後跟淺層 concat</li>
+          <li>每個尺度 3 個 anchor → 共 9 個 anchor</li>
+          <li>用 logistic (BCE) 取代 softmax → 支援 multi-label</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>尺度分配:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li>13×13: 大物件 (anchor: 116×90, 156×198, 373×326)</li>
+          <li>26×26: 中物件 (anchor: 30×61, 62×45, 59×119)</li>
+          <li>52×52: 小物件 (anchor: 10×13, 16×30, 33×23)</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>效果:</strong>mAP-50 = 57.9%,FPS 跟 SSD 相當但精度更高。</p>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="accordion-header">YOLOv4 (2020) — Bag of Freebies & Specials</div>
+      <div class="accordion-body">
+        <p><strong>Backbone:</strong> CSPDarknet-53(Cross Stage Partial)</p>
+        <p><strong>Neck:</strong> SPP + PANet (Path Aggregation Network)</p>
+        <p style="margin-top: 8px;"><strong>Bag of Freebies (訓練技巧,不增加推論成本):</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li>Mosaic Augmentation: 4 張圖拼成 1 張,大幅增加小物件樣本</li>
+          <li>CutMix: 剪貼不同圖片的區域</li>
+          <li>Label Smoothing: 防止 over-confident</li>
+          <li>DropBlock: 結構化 Dropout</li>
+          <li>CIoU Loss: 比 IoU 更好的 box loss,考慮中心距離和長寬比</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>Bag of Specials (推論時的額外計算):</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li>Mish activation (比 ReLU 平滑)</li>
+          <li>CSP connections</li>
+          <li>SAM (Spatial Attention Module)</li>
+          <li>DIoU-NMS</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>效果:</strong>COCO AP = 43.5% @ 65 FPS (V100)。</p>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="accordion-header">YOLOv5 (2020) — PyTorch 生態系的勝利</div>
+      <div class="accordion-body">
+        <p><strong>開發者:</strong> Ultralytics (Glenn Jocher)</p>
+        <p><strong>Backbone:</strong> CSPDarknet (PyTorch 重寫)</p>
+        <p style="margin-top: 8px;"><strong>核心特色:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li><strong>C3 Module:</strong> CSP Bottleneck with 3 convolutions</li>
+          <li><strong>SPPF:</strong> 比 SPP 更快的空間金字塔池化</li>
+          <li><strong>5 種大小:</strong> n / s / m / l / x (3.2M ~ 86.7M params)</li>
+          <li><strong>Auto Anchor:</strong> 自動計算最佳 anchor</li>
+          <li><strong>極致工程:</strong> Mixed precision, EMA, Cosine LR</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>為什麼紅:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li>PyTorch 原生,pip install 就能用</li>
+          <li>一行指令訓練自己的資料集</li>
+          <li>TensorRT / ONNX / CoreML 一鍵匯出</li>
+          <li>工業界大量採用(工廠瑕疵檢測、自駕、無人機）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="accordion-header">YOLOv6 (2022, Meituan) — 結構重參數化</div>
+      <div class="accordion-body">
+        <p><strong>開發者:</strong> 美團 (Meituan)</p>
+        <p><strong>Backbone:</strong> EfficientRep (基於 RepVGG)</p>
+        <p style="margin-top: 8px;"><strong>核心創新:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li><strong>Structural Reparameterization:</strong> 訓練時用多分支(3×3 + 1×1 + identity),推論時融合成一個 3×3 conv</li>
+          <li><strong>Anchor-free:</strong> 直接預測距邊界的距離 (l, t, r, b)</li>
+          <li><strong>Decoupled Head:</strong> 分類和回歸用分開的 head</li>
+          <li><strong>SimOTA / TAL:</strong> 更好的正樣本分配策略</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>效果:</strong>YOLOv6-S 在 COCO 上 43.1% AP @ 520 FPS (T4)。</p>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="accordion-header">YOLOv7 (2022) — E-ELAN + Planned Re-param</div>
+      <div class="accordion-body">
+        <p><strong>開發者:</strong> 原 YOLOv4 團隊 (WongKinYiu)</p>
+        <p style="margin-top: 8px;"><strong>核心創新:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li><strong>E-ELAN:</strong> Extended-ELAN,不改 gradient path 但增加 learning capacity</li>
+          <li><strong>Planned Re-parameterization:</strong> 根據網路結構選擇性地做重參數化</li>
+          <li><strong>Auxiliary Head:</strong> 訓練時加輔助 head 提供更多監督訊號</li>
+          <li><strong>Coarse-to-fine lead guided:</strong> 精細的 label assignment</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>效果:</strong>56.8% AP @ 30 FPS (V100),當時最強。</p>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="accordion-header">YOLOv8 (2023, Ultralytics) — 統一架構 + Multi-task</div>
+      <div class="accordion-body">
+        <p><strong>開發者:</strong> Ultralytics (YOLOv5 同團隊)</p>
+        <p><strong>Backbone:</strong> 改良 CSPDarknet (C2f module)</p>
+        <p style="margin-top: 8px;"><strong>核心創新:</strong></p>
+        <ul style="margin-left: 20px; margin-top: 4px;">
+          <li><strong>C2f Module:</strong> C3 的改良版,更多 gradient flow</li>
+          <li><strong>Anchor-free:</strong> 不需要預設 anchor,直接預測</li>
+          <li><strong>DFL (Distribution Focal Loss):</strong> 把 box 回歸當作分布來預測</li>
+          <li><strong>TAL (Task-Aligned Learning):</strong> 分類和定位的 loss 一起優化正樣本分配</li>
+          <li><strong>Decoupled Head:</strong> 分類 / 回歸分開的輸出頭</li>
+          <li><strong>Multi-task:</strong> 同一個架構支援 Detection / Segmentation / Classification / Pose</li>
+        </ul>
+        <p style="margin-top: 8px;"><strong>5 種尺寸:</strong> n (3.2M) / s (11.2M) / m (25.9M) / l (43.7M) / x (68.2M)</p>
+        <p style="margin-top: 8px;"><strong>為什麼重要:</strong>Anchor-free 讓 pipeline 更簡單;多任務讓一個模型做多件事;Ultralytics 生態系讓使用門檻極低。</p>
+      </div>
+    </div>
+
+    <h3 class="subhead">演進脈絡:每一代解決了什麼</h3>
+    <div class="panel" style="margin-top: 12px;">
+      <div style="font-family: 'Kalam', cursive; font-size: 14px; line-height: 2.2; color: var(--ink);">
+        <strong style="color: var(--red);">v1</strong> 證明 one-stage 可行
+        → <strong style="color: var(--red);">v2</strong> 加 anchor 解決多尺度
+        → <strong style="color: var(--red);">v3</strong> 多尺度預測解決小物件
+        → <strong style="color: var(--red);">v4</strong> 訓練技巧集大成
+        → <strong style="color: var(--red);">v5</strong> 工程化部署
+        → <strong style="color: var(--red);">v6</strong> 重參數化加速
+        → <strong style="color: var(--red);">v7</strong> 架構設計新高
+        → <strong style="color: var(--red);">v8</strong> Anchor-free + Multi-task 統一框架
+      </div>
+    </div>
+
+    <div class="note" style="margin-top: 24px;">
+      <div class="note-title">作業相關</div>
+      你的作業是做一個自己的 YOLO 模型。不需要做到 v8 那麼複雜,但要理解基本原理:
+      <strong>grid 切割 → anchor/anchor-free 預測 → loss 計算 → NMS 後處理</strong>。
+      建議從 v1 的概念開始,再加入 v3 的多尺度。
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1506.02640" target="_blank" rel="noopener"><span>YOLOv1 — You Only Look Once</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1612.08242" target="_blank" rel="noopener"><span>YOLOv2 — YOLO9000</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1804.02767" target="_blank" rel="noopener"><span>YOLOv3 — An Incremental Improvement</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/2004.10934" target="_blank" rel="noopener"><span>YOLOv4 — Optimal Speed and Accuracy</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://docs.ultralytics.com" target="_blank" rel="noopener"><span>Ultralytics YOLOv8 Docs</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/2207.02696" target="_blank" rel="noopener"><span>YOLOv7 Paper</span><span class="resource-tag">論文</span></a>
+      </div>
+    </div>
+
+<h3 class="subhead">IoU 家族演進 (IoU → GIoU → DIoU → CIoU)</h3>
+<div class="panel" style="margin-top:12px;">
+  <div class="panel-label">為什麼 IoU Loss 要一直改進?</div>
+  <div class="step-reveal" id="iouReveal">
+    <div class="step-reveal-item revealed">
+      <strong style="color:var(--red);">IoU Loss</strong>: 兩 box 交集/聯集。問題:完全沒交集時梯度=0,模型不知道怎麼靠近。
+    </div>
+    <div class="step-reveal-item">
+      <strong style="color:var(--orange);">GIoU (2019)</strong>: 加入最小包圍框懲罰。即使沒交集也有梯度方向,但收斂慢。
+    </div>
+    <div class="step-reveal-item">
+      <strong style="color:var(--blue);">DIoU (2020)</strong>: 考慮中心點距離。收斂更快,直接拉近兩 box 中心。
+    </div>
+    <div class="step-reveal-item">
+      <strong style="color:var(--green);">CIoU (2020)</strong>: 再加長寬比懲罰 (aspect ratio)。YOLOv4+ 標配,目前最完整。
+    </div>
+  </div>
+  <button class="btn primary" onclick="revealNextStep('iouReveal')">下一步 →</button>
+</div>
+
+<h3 class="subhead">猜猜是哪個版本?</h3>
+<div class="quiz-box" data-quiz="yoloevo-guess1">
+  <div class="quiz-title">YOLO 版本猜猜看</div>
+  <p style="font-size:14px; margin-bottom:12px;">哪個版本首次引入了 Multi-scale prediction (多尺度預測)?</p>
+  <div class="quiz-option" data-correct="false" data-explanation="v2 只有單一 13×13 grid,還沒有多尺度。">YOLOv2</div>
+  <div class="quiz-option" data-correct="true" data-explanation="正確! YOLOv3 在 13×13, 26×26, 52×52 三個尺度同時預測,用類似 FPN 的結構。">YOLOv3</div>
+  <div class="quiz-option" data-correct="false" data-explanation="v4 沿用了 v3 的多尺度,但不是首創。">YOLOv4</div>
+  <div class="quiz-option" data-correct="false" data-explanation="v1 只有粗糙的 7×7 grid。">YOLOv1</div>
+  <div class="quiz-feedback"></div>
+</div>
+
+<div class="quiz-box" data-quiz="yoloevo-guess2" style="margin-top:16px;">
+  <div class="quiz-title">Two-stage vs One-stage</div>
+  <p style="font-size:14px; margin-bottom:12px;">Two-stage detector (如 Faster R-CNN) 比 YOLO 慢的主要原因是?</p>
+  <div class="quiz-option" data-correct="false" data-explanation="backbone 複雜度差不多,不是主因。">Backbone 太複雜</div>
+  <div class="quiz-option" data-correct="true" data-explanation="正確! 第一階段 RPN 產生 ~2000 個候選區域,每個都要獨立做一次分類,計算量巨大。">需要對每個候選區域 (region proposal) 獨立做分類</div>
+  <div class="quiz-option" data-correct="false" data-explanation="兩者都使用 NMS。">因為用了 NMS</div>
+  <div class="quiz-option" data-correct="false" data-explanation="GPU 不是瓶頸,架構設計才是。">因為不能用 GPU</div>
+  <div class="quiz-feedback"></div>
+</div>

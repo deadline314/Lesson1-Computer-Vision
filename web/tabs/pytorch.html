@@ -1,0 +1,224 @@
+    <h2 class="section-title">PyTorch 實作指南</h2>
+    <span class="section-tag">From Code to Training Loop</span>
+    <p class="section-desc">
+      知道原理後,怎麼用 PyTorch 寫出來?這裡整理最核心的 code pattern,跟新手最常踩的雷。
+    </p>
+
+    <h3 class="subhead">nn.Module 基本結構</h3>
+    <div class="panel">
+      <div class="panel-label">最簡單的 CNN</div>
+      <div class="code-block"><span class="kw">import</span> torch
+<span class="kw">import</span> torch.nn <span class="kw">as</span> nn
+
+<span class="kw">class</span> <span class="cls">SimpleCNN</span>(nn.<span class="cls">Module</span>):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, num_classes=<span class="num">10</span>):
+        <span class="kw">super</span>().__init__()
+        self.features = nn.<span class="cls">Sequential</span>(
+            nn.<span class="cls">Conv2d</span>(<span class="num">3</span>, <span class="num">64</span>, kernel_size=<span class="num">3</span>, padding=<span class="num">1</span>),
+            nn.<span class="cls">BatchNorm2d</span>(<span class="num">64</span>),
+            nn.<span class="cls">ReLU</span>(inplace=<span class="kw">True</span>),
+            nn.<span class="cls">MaxPool2d</span>(<span class="num">2</span>, <span class="num">2</span>),
+            nn.<span class="cls">Conv2d</span>(<span class="num">64</span>, <span class="num">128</span>, kernel_size=<span class="num">3</span>, padding=<span class="num">1</span>),
+            nn.<span class="cls">BatchNorm2d</span>(<span class="num">128</span>),
+            nn.<span class="cls">ReLU</span>(inplace=<span class="kw">True</span>),
+            nn.<span class="cls">AdaptiveAvgPool2d</span>(<span class="num">1</span>),
+        )
+        self.classifier = nn.<span class="cls">Linear</span>(<span class="num">128</span>, num_classes)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        x = self.features(x)
+        x = x.flatten(<span class="num">1</span>)
+        x = self.classifier(x)
+        <span class="kw">return</span> x</div>
+    </div>
+
+    <h3 class="subhead">Residual Block 寫法</h3>
+    <div class="panel">
+      <div class="panel-label">ResNet 的核心 building block</div>
+      <div class="code-block"><span class="kw">class</span> <span class="cls">ResidualBlock</span>(nn.<span class="cls">Module</span>):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, channels):
+        <span class="kw">super</span>().__init__()
+        self.block = nn.<span class="cls">Sequential</span>(
+            nn.<span class="cls">Conv2d</span>(channels, channels, <span class="num">3</span>, padding=<span class="num">1</span>, bias=<span class="kw">False</span>),
+            nn.<span class="cls">BatchNorm2d</span>(channels),
+            nn.<span class="cls">ReLU</span>(inplace=<span class="kw">True</span>),
+            nn.<span class="cls">Conv2d</span>(channels, channels, <span class="num">3</span>, padding=<span class="num">1</span>, bias=<span class="kw">False</span>),
+            nn.<span class="cls">BatchNorm2d</span>(channels),
+        )
+        self.relu = nn.<span class="cls">ReLU</span>(inplace=<span class="kw">True</span>)
+
+    <span class="kw">def</span> <span class="fn">forward</span>(self, x):
+        <span class="kw">return</span> self.relu(self.block(x) + x)  <span class="cm"># ← skip connection!</span></div>
+    </div>
+
+    <h3 class="subhead">完整 Training Loop</h3>
+    <div class="panel">
+      <div class="panel-label">PyTorch 訓練五步驟</div>
+      <div class="code-block"><span class="cm"># 1. 準備資料</span>
+train_loader = DataLoader(train_dataset, batch_size=<span class="num">32</span>, shuffle=<span class="kw">True</span>)
+
+<span class="cm"># 2. 定義模型、Loss、Optimizer</span>
+model = <span class="cls">SimpleCNN</span>(num_classes=<span class="num">10</span>).cuda()
+criterion = nn.<span class="cls">CrossEntropyLoss</span>()
+optimizer = torch.optim.<span class="cls">Adam</span>(model.parameters(), lr=<span class="num">1e-3</span>)
+
+<span class="cm"># 3. Training Loop</span>
+<span class="kw">for</span> epoch <span class="kw">in</span> range(<span class="num">50</span>):
+    model.train()  <span class="cm"># ← 切到訓練模式 (BN 用 batch stats)</span>
+    <span class="kw">for</span> images, labels <span class="kw">in</span> train_loader:
+        images, labels = images.cuda(), labels.cuda()
+
+        outputs = model(images)          <span class="cm"># Forward</span>
+        loss = criterion(outputs, labels) <span class="cm"># 算 Loss</span>
+
+        optimizer.zero_grad()             <span class="cm"># 清梯度</span>
+        loss.backward()                   <span class="cm"># 反向傳播</span>
+        optimizer.step()                  <span class="cm"># 更新參數</span>
+
+<span class="cm"># 4. Evaluation</span>
+model.eval()  <span class="cm"># ← 切到推論模式 (BN 用 running stats)</span>
+<span class="kw">with</span> torch.no_grad():
+    <span class="kw">for</span> images, labels <span class="kw">in</span> val_loader:
+        outputs = model(images.cuda())
+        _, predicted = outputs.max(<span class="num">1</span>)
+        correct += (predicted == labels.cuda()).sum().item()</div>
+    </div>
+
+    <h3 class="subhead">Training Simulator</h3>
+    <p style="font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink-soft); margin-bottom: 12px;">
+      調整超參數,看 loss curve 怎麼變化。體會 learning rate 太大太小、模型太深(overfitting)的差別。
+    </p>
+    <div class="panel">
+      <div class="panel-label">Loss Curve 模擬器</div>
+      <canvas id="trainSimCanvas" class="train-sim-canvas"></canvas>
+      <div class="train-sim-legend">
+        <span class="train-line">Train Loss</span>
+        <span class="val-line">Val Loss</span>
+      </div>
+      <div class="controls-grid" style="margin-top: 16px;">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Learning Rate</span><span class="val" id="tsLrVal">0.01</span></div>
+          <input type="range" id="tsLr" min="-4" max="-1" value="-2" step="0.1">
+          <div class="slider-help">太大會震盪,太小會收斂很慢</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Batch Size</span><span class="val" id="tsBsVal">64</span></div>
+          <input type="range" id="tsBs" min="3" max="8" value="6" step="1">
+          <div class="slider-help">小 batch = 更多雜訊,大 batch = 更平滑</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>Model Depth</span><span class="val" id="tsDepthVal">18 layers</span></div>
+          <input type="range" id="tsDepth" min="5" max="50" value="18" step="1">
+          <div class="slider-help">太深 + 少資料 = overfitting</div>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top: 14px;">
+        <button class="btn primary" id="tsTrainBtn">🚀 Train!</button>
+        <button class="btn danger" id="tsResetBtn">↺ Reset</button>
+      </div>
+      <div id="tsStatus" style="margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-soft);">
+        Epoch: 0 / 100 | Train Loss: — | Val Loss: —
+      </div>
+    </div>
+
+    <h3 class="subhead">新手五大地雷</h3>
+    <ul class="checklist">
+      <li>忘記 model.train() / model.eval() — BN 和 Dropout 在兩個模式行為不同!</li>
+      <li>忘記 optimizer.zero_grad() — 梯度會累積,loss 會爆炸</li>
+      <li>忘記 torch.no_grad() 在 eval 時 — 浪費記憶體建 graph</li>
+      <li>Loss 用錯 — CrossEntropyLoss 已含 softmax,不要再自己加!</li>
+      <li>Tensor device 不一致 — model 在 GPU,data 在 CPU → RuntimeError</li>
+    </ul>
+
+    <h3 class="subhead">YOLO vs 分類模型:差在哪?</h3>
+    <div class="panel" style="margin-top: 12px;">
+      <div class="compare-table-wrap">
+        <table class="compare-table">
+          <thead>
+            <tr><th>面向</th><th>分類模型 (ResNet)</th><th>YOLO (偵測模型)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>輸出</td><td>單一 class 機率向量 (1000,)</td><td>每格 × 每 anchor 的 (x,y,w,h,conf,classes)</td></tr>
+            <tr><td>Loss</td><td>CrossEntropyLoss</td><td>Box loss + Obj loss + Cls loss (複合)</td></tr>
+            <tr><td>後處理</td><td>argmax 取最大</td><td>NMS 去除重複框</td></tr>
+            <tr><td>標註</td><td>一張圖一個 label</td><td>每個物件一個 bbox + label</td></tr>
+            <tr><td>難點</td><td>模型設計</td><td>正負樣本分配 + anchor 設計 + loss 平衡</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="accordion" style="margin-top: 24px;">
+      <div class="accordion-header">YOLO Loss 怎麼算?(簡化版)</div>
+      <div class="accordion-body">
+        <p>YOLO 的 loss 有三個部分:</p>
+        <ul style="margin-left: 20px; margin-top: 8px; line-height: 2;">
+          <li><strong>Box loss:</strong> 預測框跟 GT 框的差異 (CIoU / DFL)</li>
+          <li><strong>Objectness loss:</strong> 這格有沒有物件 (BCE)</li>
+          <li><strong>Classification loss:</strong> 物件是哪個 class (BCE / CE)</li>
+        </ul>
+        <p style="margin-top: 8px;">Loss = λ₁ × box_loss + λ₂ × obj_loss + λ₃ × cls_loss</p>
+        <p style="margin-top: 8px;">λ 的比例很重要,調不好模型會偏向某一個任務。YOLOv5 預設 box=0.05, obj=1.0, cls=0.5。</p>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">DataLoader 怎麼處理偵測資料?</div>
+      <div class="accordion-body">
+        <p>分類:每筆資料 = (image, label_int)</p>
+        <p>偵測:每筆資料 = (image, [多個 bbox])</p>
+        <p style="margin-top: 8px;">因為每張圖的物件數量不同,需要自定義 collate_fn 來 padding。</p>
+        <p style="margin-top: 8px;">常見格式 (YOLO txt format):<br>
+        <code style="font-family: 'JetBrains Mono'; font-size: 12px; background: var(--paper-dark); padding: 2px 6px; border-radius: 3px;">class_id  x_center  y_center  width  height</code> (全部歸一化到 0~1)</p>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top: 24px;">
+      <div class="note-title">Debug 心法</div>
+      訓練到一半 loss 不動?先確認:<br>
+      1. <strong>印 shape</strong> — 每層 input/output shape 是否符合預期<br>
+      2. <strong>印 loss 各項</strong> — 看是哪個 loss 卡住了<br>
+      3. <strong>overfit 一張圖</strong> — 確認模型有能力學習(loss 能降到 0)<br>
+      4. <strong>視覺化預測</strong> — 畫出預測的 bbox 跟 GT 比較
+    </div>
+
+    <div class="quiz-box" data-quiz="pytorch-q1">
+      <div class="quiz-title">小測驗</div>
+      <p style="font-size: 14px; margin-bottom: 12px;">PyTorch 的 CrossEntropyLoss 內部已經包含了什麼操作?</p>
+      <div class="quiz-option" data-correct="false" data-explanation="ReLU 是激活函數,跟 loss 無關。">ReLU</div>
+      <div class="quiz-option" data-correct="true" data-explanation=" CrossEntropyLoss = LogSoftmax + NLLLoss,所以 forward 最後不要再加 softmax!">LogSoftmax</div>
+      <div class="quiz-option" data-correct="false" data-explanation="Sigmoid 是 BCEWithLogitsLoss 包含的,不是 CrossEntropyLoss。">Sigmoid</div>
+      <div class="quiz-option" data-correct="false" data-explanation="BatchNorm 是層,不是 loss 的一部分。">BatchNorm</div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://docs.pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html" target="_blank" rel="noopener"><span>PyTorch — Training a Classifier</span><span class="resource-tag">教學</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html" target="_blank" rel="noopener"><span>CrossEntropyLoss 文件</span><span class="resource-tag">官方</span></a>
+        <a class="resource-link" href="https://github.com/ultralytics/ultralytics" target="_blank" rel="noopener"><span>Ultralytics YOLOv8 GitHub</span><span class="resource-tag">原始碼</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/tutorials/beginner/transfer_learning_tutorial.html" target="_blank" rel="noopener"><span>Transfer Learning Tutorial</span><span class="resource-tag">教學</span></a>
+      </div>
+    </div>
+
+    <h3 class="subhead">填空練習:Training Loop</h3>
+    <div class="panel" style="margin-top:12px;">
+      <div class="panel-label">補完下面的訓練迴圈 (點擊空格填入答案)</div>
+      <div class="code-block" id="fillBlankCode"><span class="kw">for</span> epoch <span class="kw">in</span> range(num_epochs):
+    model.<span class="fill-blank" data-answer="train" onclick="fillBlank(this)">???</span>()
+
+    <span class="kw">for</span> images, labels <span class="kw">in</span> train_loader:
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+
+        optimizer.<span class="fill-blank" data-answer="zero_grad" onclick="fillBlank(this)">???</span>()
+        loss.<span class="fill-blank" data-answer="backward" onclick="fillBlank(this)">???</span>()
+        optimizer.<span class="fill-blank" data-answer="step" onclick="fillBlank(this)">???</span>()
+
+    model.<span class="fill-blank" data-answer="eval" onclick="fillBlank(this)">???</span>()
+    <span class="kw">with</span> torch.<span class="fill-blank" data-answer="no_grad" onclick="fillBlank(this)">???</span>():
+        ...</div>
+      <div style="margin-top:12px; font-family:'Patrick Hand',cursive; font-size:13px; color:var(--ink-faint);">
+        提示:train/eval 模式切換、梯度清零、反向傳播、參數更新、不追蹤梯度
+      </div>
+    </div>

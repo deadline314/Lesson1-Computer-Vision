@@ -1,0 +1,133 @@
+    <h2 class="section-title">作業說明</h2>
+    <span class="section-tag">Homework · Build Your Own YOLO</span>
+    <p class="section-desc">
+      這次作業的目標:設計一個自己的物件偵測模型,用 PyTorch 實作,並在提供的資料集上訓練。
+    </p>
+
+    <h3 class="subhead">作業要求</h3>
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">1. 模型設計</div>
+        <div class="concept-card-text">設計一個 CNN backbone + detection head。不限架構,但需要解釋設計理由。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">2. 訓練腳本</div>
+        <div class="concept-card-text">完整的 training loop,包含 data loading, augmentation, loss, optimizer。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">3. 實驗紀錄</div>
+        <div class="concept-card-text">記錄不同超參數的實驗結果,分析哪些設計有效、哪些沒用。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">4. 推論展示</div>
+        <div class="concept-card-text">提供幾張測試圖的偵測結果視覺化,跟 mAP 數字。</div>
+      </div>
+    </div>
+
+    <h3 class="subhead">評分標準</h3>
+    <div class="panel">
+      <table class="grading-table">
+        <thead>
+          <tr><th>項目</th><th>比重</th><th>說明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>模型架構設計</td><td class="pct">40%</td><td>Backbone 選擇、Head 設計是否合理、是否有創意</td></tr>
+          <tr><td>程式碼品質</td><td class="pct">30%</td><td>結構清晰、有適當的 config、可重現</td></tr>
+          <tr><td>訓練策略</td><td class="pct">20%</td><td>Learning rate schedule、Augmentation、Loss 設計</td></tr>
+          <tr><td>最終精度</td><td class="pct">10%</td><td>mAP 越高越好,但不是唯一指標</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note" style="margin-top: 24px;">
+      <div class="note-title">重要提醒</div>
+      <strong>精度只佔 10%!</strong> 重點是你對架構的理解和設計思路,不是跑出最高的數字。
+      用 pretrained backbone 是允許的(甚至推薦),但你需要說明為什麼選這個 backbone。
+    </div>
+
+    <h3 class="subhead">繳交內容</h3>
+    <ul class="checklist">
+      <li>模型程式碼 (model.py 或 notebook)</li>
+      <li>訓練腳本 (train.py) 含完整 training loop</li>
+      <li>實驗報告:架構圖 + 設計理由 + 實驗結果表格</li>
+      <li>推論結果:至少 5 張測試圖的偵測視覺化</li>
+      <li>README:如何安裝、如何訓練、如何推論</li>
+    </ul>
+
+    <h3 class="subhead">建議方向</h3>
+    <div class="accordion">
+      <div class="accordion-header">方向 A: 從零開始 (挑戰型)</div>
+      <div class="accordion-body">
+        <p>自己設計 backbone + detection head,不使用任何 pretrained weights。</p>
+        <p style="margin-top: 8px;">建議架構:3~5 個 Conv block (每個: Conv → BN → ReLU → Pool) + YOLO head。</p>
+        <p style="margin-top: 8px;">優點:完全理解每個組件。缺點:精度可能不高,需要更多訓練時間。</p>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">方向 B: Transfer Learning (推薦型)</div>
+      <div class="accordion-body">
+        <p>使用 pretrained ResNet/EfficientNet 當 backbone,自己加 detection head。</p>
+        <p style="margin-top: 8px;">步驟:取 ImageNet pretrained backbone → 接 FPN/PAN neck → 接 YOLO-style head。</p>
+        <p style="margin-top: 8px;">優點:精度高、訓練快。需要理解 feature 怎麼從 backbone 取出。</p>
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">方向 C: 魔改 YOLOv5/v8 (實戰型)</div>
+      <div class="accordion-body">
+        <p>Fork Ultralytics 的程式碼,修改某個模組(如換 backbone、改 loss、加 attention)。</p>
+        <p style="margin-top: 8px;">需要:明確說明你改了什麼、為什麼改、改前改後的數據比較。</p>
+        <p style="margin-top: 8px;">優點:接近工業實戰。需要理解框架原始碼。</p>
+      </div>
+    </div>
+
+    <h3 class="subhead">常見問題 FAQ</h3>
+    <div class="accordion">
+      <div class="accordion-header">Q: 可以用 Ultralytics 直接 train 嗎?</div>
+      <div class="accordion-body">
+        可以用來當 baseline 比較,但你自己的模型需要有自己寫的部分。不能只跑一行 <code>yolo train</code> 就交差。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">Q: 需要訓練多久?</div>
+      <div class="accordion-body">
+        看資料集大小。如果用提供的小資料集,Google Colab 的免費 GPU 跑幾個小時就夠了。重點不在跑很多 epoch,而是觀察 loss 趨勢。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">Q: mAP 多少才算及格?</div>
+      <div class="accordion-body">
+        沒有固定門檻。重點是你的模型有在學(loss 下降、能產生合理的 bbox)。如果設計合理但精度不高,好好分析原因一樣可以拿高分。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">Q: 可以幾個人一組?</div>
+      <div class="accordion-body">
+        個人作業。但歡迎互相討論概念,不要直接複製程式碼。
+      </div>
+    </div>
+
+    <h3 class="subhead">建議資料集</h3>
+    <div class="panel" style="margin-top:12px;">
+      <div class="resources-list">
+        <a class="resource-link" href="https://cocodataset.org/#download" target="_blank" rel="noopener"><span>COCO 2017 (取 subset 即可)</span><span class="resource-tag">推薦</span></a>
+        <a class="resource-link" href="http://host.robots.ox.ac.uk/pascal/VOC/voc2012/" target="_blank" rel="noopener"><span>PASCAL VOC 2012 (20 classes)</span><span class="resource-tag">經典</span></a>
+        <a class="resource-link" href="https://storage.googleapis.com/openimages/web/index.html" target="_blank" rel="noopener"><span>Open Images V7</span><span class="resource-tag">大型</span></a>
+        <a class="resource-link" href="https://universe.roboflow.com/" target="_blank" rel="noopener"><span>Roboflow Universe (各種小資料集)</span><span class="resource-tag">方便</span></a>
+        <a class="resource-link" href="https://www.kaggle.com/datasets" target="_blank" rel="noopener"><span>Kaggle Datasets</span><span class="resource-tag">多樣</span></a>
+      </div>
+      <div style="margin-top:12px; font-family:'Patrick Hand',cursive; font-size:14px; color:var(--ink-soft);">
+        建議:新手先用 PASCAL VOC 或 COCO 的 5 個類別 subset。資料太大會花太多時間在 data loading。
+      </div>
+    </div>
+
+    <div class="resources" style="margin-top: 32px;">
+      <div class="resources-title">參考資源 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://docs.pytorch.org/tutorials/intermediate/torchvision_tutorial.html" target="_blank" rel="noopener"><span>TorchVision Object Detection Finetuning</span><span class="resource-tag">教學</span></a>
+        <a class="resource-link" href="https://github.com/ultralytics/ultralytics" target="_blank" rel="noopener"><span>Ultralytics YOLOv8 — 參考實作</span><span class="resource-tag">GitHub</span></a>
+        <a class="resource-link" href="https://cocodataset.org/" target="_blank" rel="noopener"><span>COCO Dataset — 評估標準</span><span class="resource-tag">資料集</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1506.02640" target="_blank" rel="noopener"><span>YOLO 原論文 — 必讀</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://www.youtube.com/watch?v=n9_XyCGr-MI" target="_blank" rel="noopener"><span>Aladdin Persson: YOLOv1 from scratch</span><span class="resource-tag">影片</span></a>
+        <a class="resource-link" href="https://docs.pytorch.org/docs/stable/index.html" target="_blank" rel="noopener"><span>PyTorch 官方文件</span><span class="resource-tag">官方</span></a>
+      </div>
+    </div>

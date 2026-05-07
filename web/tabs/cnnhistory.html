@@ -1,0 +1,112 @@
+    <h2 class="section-title">CNN 演進史</h2>
+    <span class="section-tag">From LeNet to ConvNeXt</span>
+    <p class="section-desc">
+      從 1998 年的 LeNet 到現代的 ConvNeXt,CNN 的發展像一場接力賽。每一代解決了上一代的痛點。
+    </p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-year">1998</div>
+        <div class="timeline-title">LeNet-5 (Yann LeCun)</div>
+        <div class="timeline-desc">第一個成功的 CNN,用來辨識手寫數字。結構簡單:2 個 conv + 2 個 pool + 3 個 FC。證明了 CNN 可以學到有用的 feature。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2012</div>
+        <div class="timeline-title">AlexNet (Alex Krizhevsky)</div>
+        <div class="timeline-desc">ImageNet 冠軍,error rate 從 26% 降到 16%。第一次用 GPU 訓練大型 CNN。引入 ReLU、Dropout、Data Augmentation。深度學習的「iPhone moment」。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2014</div>
+        <div class="timeline-title">VGGNet (Simonyan & Zisserman)</div>
+        <div class="timeline-desc">證明「深度」很重要。統一用 3×3 kernel(兩個 3×3 = 一個 5×5 的感受野,參數更少)。VGG-16 / VGG-19 至今還是常用的 backbone。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2014</div>
+        <div class="timeline-title">GoogLeNet / Inception</div>
+        <div class="timeline-desc">引入 Inception module:同時用 1×1、3×3、5×5 conv 平行處理,再 concat。用 1×1 conv 做 channel 壓縮,大幅減少計算量。22 層但參數只有 AlexNet 的 1/12。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2015</div>
+        <div class="timeline-title">ResNet (Kaiming He)</div>
+        <div class="timeline-desc">Skip connection 解決梯度消失。152 層!Error rate 3.57%,超越人類(5.1%)。影響至今:所有現代模型都用 residual connection。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2017</div>
+        <div class="timeline-title">DenseNet / SENet / MobileNet</div>
+        <div class="timeline-desc">DenseNet:每層連到所有後面的層。SENet:channel attention。MobileNet:depth-wise separable conv 讓 CNN 跑在手機上。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2020</div>
+        <div class="timeline-title">EfficientNet / Vision Transformer</div>
+        <div class="timeline-desc">EfficientNet:用 NAS 自動找最佳架構。ViT:把 Transformer 搬到 vision,證明 attention 也能做圖片分類。CNN vs Transformer 大戰開始。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2022</div>
+        <div class="timeline-title">ConvNeXt (Meta)</div>
+        <div class="timeline-desc">「如果把 ResNet 用 Transformer 的設計哲學重新設計會怎樣?」結果:純 CNN 也能跟 ViT 打平!證明 CNN 還沒死,只是需要現代化。</div>
+      </div>
+    </div>
+
+    <h3 class="subhead">重要發明速查</h3>
+    <div class="accordion">
+      <div class="accordion-header">ReLU (2012, AlexNet) — 解決飽和問題</div>
+      <div class="accordion-body">
+        在 AlexNet 之前,大家用 sigmoid / tanh。這些函數在輸入很大或很小時梯度趨近 0(飽和),深層網路訓練不起來。
+        ReLU: f(x) = max(0, x),正半邊梯度永遠 = 1,計算快 6 倍。從此成為默認 activation。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">Batch Normalization (2015) — 加速收斂</div>
+      <div class="accordion-body">
+        Ioffe & Szegedy 發現:每層的 input 分布會隨訓練改變(Internal Covariate Shift)。
+        BN 把每層輸出標準化到 mean=0, std=1,讓下一層收到穩定的 input。效果:可以用更大 LR,訓練快 14 倍。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">Skip Connection (2015, ResNet) — 深度不再是問題</div>
+      <div class="accordion-body">
+        核心: y = F(x) + x。多了一條 identity path,梯度可以直接流到前面的層。
+        沒有 ResNet 之前,超過 30 層 train loss 反而上升;有了之後可以 152 層、1000 層。
+        現在幾乎所有深度模型(包括 Transformer)都用這個技巧。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">Depthwise Separable Conv (2017, MobileNet) — 手機也能跑</div>
+      <div class="accordion-body">
+        標準 Conv: 每個 output channel 的 kernel 都是 (Cin × K × K)。
+        Depthwise Separable: 先對每個 channel 獨立做 K×K conv,再用 1×1 conv 做跨 channel 混合。
+        計算量降低 8~9 倍,品質只掉一點點。MobileNet / EfficientNet / YOLOv5 都大量使用。
+      </div>
+    </div>
+    <div class="accordion">
+      <div class="accordion-header">Channel Attention (2018, SENet) — 讓模型自己選 channel</div>
+      <div class="accordion-body">
+        不是每個 channel(feature map)都一樣重要。SENet 用 GAP + FC + sigmoid 算出每個 channel 的「重要性權重」,再乘回去。
+        等於讓模型自己學「這張圖應該多注意哪些特徵」。後來的 ECA、CBAM 都是這個思路的延伸。
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼要知道演進?</div>
+      現代模型不是憑空出現的,每一個設計都是為了解決某個問題。看懂演進,你就能理解為什麼 YOLO 的 backbone 長那樣,也能預測未來的趨勢。
+    </div>
+
+    <div class="quiz-box" data-quiz="cnn-history-q1">
+      <div class="quiz-title">小測驗</div>
+      <p style="font-size: 14px; margin-bottom: 12px;">ResNet 的 skip connection 主要解決了什麼問題?</p>
+      <div class="quiz-option" data-correct="false" data-explanation="Overfitting 主要用 Dropout 和 Data Aug 解決。">過擬合 (Overfitting)</div>
+      <div class="quiz-option" data-correct="true" data-explanation=" ∂(F+x)/∂x = ∂F/∂x + 1,那個 +1 保證梯度永遠不會完全消失。">梯度消失,讓深層網路可以訓練</div>
+      <div class="quiz-option" data-correct="false" data-explanation="計算量跟 skip connection 關係不大,depthwise conv 才是減少計算量的技巧。">計算量太大</div>
+      <div class="quiz-option" data-correct="false" data-explanation="資料不足的問題用 data augmentation 解決。">訓練資料不足</div>
+      <div class="quiz-feedback"></div>
+    </div>
+
+    <div class="resources">
+      <div class="resources-title">延伸閱讀 ✿</div>
+      <div class="resources-list">
+        <a class="resource-link" href="https://arxiv.org/abs/1409.1556" target="_blank" rel="noopener"><span>VGG — Very Deep Convolutional Networks</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/1512.03385" target="_blank" rel="noopener"><span>ResNet — Deep Residual Learning</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/2201.03545" target="_blank" rel="noopener"><span>ConvNeXt — A ConvNet for the 2020s</span><span class="resource-tag">論文</span></a>
+        <a class="resource-link" href="https://arxiv.org/abs/2010.11929" target="_blank" rel="noopener"><span>ViT — An Image is Worth 16×16 Words</span><span class="resource-tag">論文</span></a>
+      </div>
+    </div>

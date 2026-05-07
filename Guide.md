@@ -1,6 +1,8 @@
 # 第一堂:視覺模型基礎 — CNN， ResNet， YOLO
 **目標:讓學弟們真正搞懂「電腦怎麼看圖」，從 CNN 的直覺出發，理解每一代架構在解決什麼問題，最後能自己刻一個 YOLO**
 
+[互動式網頁](https://lesson1-computer-vision.pages.dev/web/)
+
 ---
 
 ## 課程節奏總覽
@@ -9,6 +11,7 @@
 |-----|------|----------|
 | 簡介 | 為什麼要學這個 | 你覺得電腦看圖跟人類有什麼不同 |
 | CNN 完整複習 | Convolution / Pooling / FC，以及輔助組件 | 互動網頁:Convolution Playground |
+| 訓練的本質 | 梯度、梯度下降、優化器、模擬退火 | 互動網頁:Gradient Descent Playground |
 | ResNet 全變體 | 梯度消失、Skip Connection、Basic vs Bottleneck、Pre-activation | 互動網頁:Gradient Vanishing Demo |
 | YOLO 系列演進 | v1 ~ v8 完整演進，每代解決什麼問題 | 互動網頁:YOLO Anchor Visualizer |
 | PyTorch 實作 | nn.Module / forward / 訓練流程 | 互動網頁:PyTorch Model Builder |
@@ -55,7 +58,7 @@ CNN 的設計就是針對這三件事下手，給模型三個內建假設(這也
 | 特性 | 在做什麼 | 為什麼重要 |
 |------|----------|-----------|
 | **Local Connectivity** | 每個 neuron 只看前一層的小區域(receptive field) | 模仿人類視覺皮質，符合「相鄰像素相關」的事實 |
-| **Weight Sharing** | 同一個 filter 滑過整張圖，參數共用 | 大幅減少參數;同一種特徵不管在哪都認得 |
+| **Weight Sharing** | 同一個 filter 滑過整張圖,參數共用 | 大幅減少參數;同一種特徵不管在哪都認得 |
 | **Hierarchical Features** | 淺層學邊緣紋理，深層學部件語意 | 跟人類視覺處理方式一樣 |
 
 > **Receptive Field (感受野) 解釋**: 一個 neuron 的感受野，就是它「能看到」原始輸入的多大範圍。第一層 3×3 conv 的感受野就是 3×3 像素。但第二層 3×3 conv 的感受野是 5×5（因為它看的是第一層的 output，而第一層每個位置已經看了 3×3）。以此類推，越深層的 neuron 看到的原始輸入範圍越大。
@@ -268,30 +271,402 @@ timeline
 
 ---
 
-## 2. ResNet 全變體
+## 2. 訓練的本質 — 梯度與優化
 
-### 2.1 為什麼需要 ResNet
+> 這一章在解一個關鍵問題:**「kernel 的值是學出來的」這句話，到底怎麼學?**
+>
+> 前面講 CNN 時一直說「這些 filter 是學出來的」、「BN 的 γ 跟 β 是可學參數」，學弟可能心裡都有個黑盒子:**到底什麼叫做「學」?** 這一章就是把那個黑盒子打開。理解這章之後，後面講 ResNet 的「梯度消失」才有意義 — 不然就是名詞解釋而已。
 
-ResNet 由微軟研究院的 Kaiming He(何愷明)等人在 2015 年提出，論文叫《Deep Residual Learning for Image Recognition》。**152 層的網路在 ILSVRC 2015 拿下 3.57% top-5 error**，比 VGG 深 8 倍但運算複雜度更低。
+### 2.1 開場問題:模型怎麼變聰明的?
 
-**這篇論文是 deep learning 史上引用最多的論文之一**，後續所有現代架構幾乎都用了 skip connection，包括 Transformer、YOLO 系列、Diffusion Model。
+先想一個情境:你寫好了 CNN 架構，初始化權重都是隨機的。
 
-### 2.2 網路越深一定越好嗎
+第一次 forward pass，模型輸入一張貓的圖片,輸出「這是飛機」(因為權重隨機,亂猜的)。
 
-2014 年大家發現一個怪現象:**把 CNN 疊得很深，訓練 loss 居然變高**(不是 overfitting，是 train loss 就高)。
+問題來了:**那這個模型怎麼從「亂猜」進步到「分得出貓跟狗」?**
 
-這違反直覺，理論上深層網路至少應該跟淺層一樣好(深層的可以把多出來的層學成 identity mapping)。但實務上做不到。
+答案是兩步:
+
+1. **算出「現在錯多少」** — 這叫 **loss function(損失函數)**
+2. **依照錯的方向去調整每一個權重** — 這叫 **梯度下降(gradient descent)**
+
+整個深度學習的訓練,骨子裡就是這兩件事的循環。本章重點是第二步。
+
+### 2.2 梯度到底是什麼
+
+**一句話定義:梯度就是「往哪個方向走,會讓函數值上升最快」。**
+
+想像你站在一座山上,眼睛被矇住。你伸出腳試探周圍,找出「最陡的上坡方向」 — 那個方向,加上「有多陡」這個資訊,就是梯度。
+
+#### 從一維開始:梯度 = 斜率
+
+如果函數只有一個變數,例如 `f(x) = x²`,那梯度就是斜率(也就是導數)。
+
+具體計算:`f'(x) = 2x`
+- 在 x = 3 的地方,梯度 = 6 → 往右走會上升,陡度是 6
+- 在 x = -2 的地方,梯度 = -4 → 往左走會上升(因為負號代表反向),陡度是 4
+
+這時候梯度是**一個數字**,正負號告訴你方向,大小告訴你陡度。
+
+#### 多維情況:梯度變成向量
+
+事情在多變數時變有趣。假設 `f(x, y) = x² + y²`(這是一個碗形曲面)。
+
+問題來了:**在某一點,「斜率」是多少?**
+
+答案是 — **看你往哪個方向走**。往東走有一個斜率,往北走有另一個,往東北走又是另一個。在三維曲面上,每個方向都有自己的斜率,所以「單一斜率」這個概念失效了。
+
+梯度的工作就是把這些資訊打包起來:
+
+- 它是個**向量**,不是單一數字
+- 它的**方向**指向上升最快的那條路
+- 它的**長度**就是那個方向上的斜率
+
+**具體例子**:在 `f(x, y) = x² + y²` 的點 (3, 4),梯度是向量 (6, 8):
+
+- 6 = ∂f/∂x = 2×3,代表「往 x 方向的斜率」
+- 8 = ∂f/∂y = 2×4,代表「往 y 方向的斜率」
+- 整個向量 (6, 8) 指的方向,就是上升最陡的方向
+- 那個方向上的斜率是 √(6² + 8²) = 10
+
+#### 對應到神經網路
+
+現在把規模放大。CNN 的「函數」是 loss function,「變數」是模型的所有權重(可能幾百萬到幾百億個)。所以:
+
+> **神經網路的梯度** = 一個跟「全部權重一樣多」的超大向量,告訴你「每個權重要往哪邊調、調多少,才能讓 loss 上升最快」。
+
+我們不要 loss 上升,我們要它**下降**,所以走梯度的反方向 — 這就是梯度下降。
+
+| 比較 | 一個變數 | 多個變數 |
+|------|---------|---------|
+| 斜率 | 一個數字 | 每個方向都有一個 |
+| 梯度 | 一個數字(=斜率) | 一個向量(包含所有方向資訊) |
+
+### 2.3 梯度下降:盲人下山
+
+#### 核心想法
+
+既然梯度告訴我們「上升最快的方向」,那往**反方向**走,就是「下降最快的方向」。重複這個動作,就能慢慢走到函數的最低點(loss 的最低點 = 模型錯最少的權重組合)。
+
+**直覺類比:盲人下山**
+
+你被丟在一座山上,目標是走到山谷最低處,但眼睛被矇住。你能做的就是:
+
+1. 用腳感覺一下「哪個方向最陡」(這就是梯度)
+2. 往**相反方向**跨一小步(往下走)
+3. 站定,再感覺一次
+4. 再走一步
+5. 重複,直到周圍變平坦(梯度接近 0),代表你到谷底了
+
+#### 更新公式
+
+```
+新權重 = 舊權重 − 學習率 × 梯度
+```
+
+這個公式是整個深度學習的心臟,要記住。其中:
+
+- **舊權重**:目前的參數
+- **梯度**:loss 對這個權重的偏導數
+- **學習率(learning rate, lr)**:一小步有多大,通常 0.1, 0.01, 0.001 之類
+
+#### 具體例子:找 f(x) = x² 的最低點
+
+我們當然知道答案是 x = 0,但假裝不知道,用梯度下降來找。
+
+**準備工作:**
+- 函數:`f(x) = x²`
+- 梯度(導數):`f'(x) = 2x`
+- 起始點:x = 5(隨便挑的)
+- 學習率:0.1
+
+**開始走:**
+
+| 步驟 | 當前 x | 當前 f(x) | 梯度 | 新 x |
+|------|--------|-----------|------|------|
+| 1 | 5.000 | 25.00 | 10.00 | 5 − 0.1×10 = 4.000 |
+| 2 | 4.000 | 16.00 | 8.00 | 4 − 0.1×8 = 3.200 |
+| 3 | 3.200 | 10.24 | 6.40 | 3.2 − 0.64 = 2.560 |
+| 4 | 2.560 | 6.55 | 5.12 | 2.048 |
+| 5 | 2.048 | 4.19 | 4.10 | 1.638 |
+| ... | ... | ... | ... | ... |
+| 20 | ≈0.058 | ≈0.003 | ≈0.116 | ≈0.046 |
+| 50 | ≈0 | ≈0 | ≈0 | ≈0 |
+
+**注意一件事:走的步伐越來越小**。因為越接近谷底,梯度(斜率)越小,自動就放慢了。這個「自動煞車」是梯度下降很優雅的地方 — 不需要額外設計。
+
+#### 學習率太大會怎樣?
+
+同樣的例子,把學習率改成 1.1:
+
+| 步驟 | 當前 x | 梯度 | 新 x |
+|------|--------|------|------|
+| 1 | 5.0 | 10.0 | 5 − 1.1×10 = -6.0 (跳過谷底,飛到對面) |
+| 2 | -6.0 | -12.0 | -6 − 1.1×(-12) = 7.2 (又飛回來,而且更遠) |
+| 3 | 7.2 | 14.4 | -8.64 |
+| 4 | -8.64 | ... | 越走越遠 |
+
+**結果:發散(diverge)**,永遠到不了谷底。這就是為什麼學習率的選擇關鍵 — 太大會發散,太小會慢到天荒地老。
+
+#### 學習率太小會怎樣?
+
+如果學習率設 0.001,從 x=5 出發:
+
+- 第 1 步:x = 5 - 0.001×10 = 4.99
+- 第 100 步:x ≈ 4.1
+- 第 1000 步:x ≈ 0.7
+
+**訓練要花 10 倍以上時間**才能到達同樣位置。實務上這代表電費跟時間成本爆增。
+
+### 2.4 從一維到神經網路:幾個關鍵差異
+
+剛才的 `f(x) = x²` 只是 toy example,實際訓練 CNN 有幾個關鍵差異:
+
+#### 差異 1:Stochastic Gradient Descent (SGD) — 不要全部資料一起算
+
+理論上,我們應該把整個訓練集(可能幾百萬張圖)都跑一次 forward + backward,得到「真正的」梯度,再走一步。這叫 **Batch Gradient Descent (BGD)**。
+
+問題:
+- 100 萬張圖跑一次才走一步,慢到爆
+- 整批塞不進 GPU 記憶體
+
+實務上的做法是 **Mini-batch SGD**:
+
+> 每次只用一個小批次(例如 64 張圖)算梯度,就更新權重。這個梯度雖然不準(因為只看了一小部分資料),但**便宜很多**,而且**有點隨機性反而是好事**(後面會講到)。
+
+| 方法 | 每次用多少資料 | 速度 | 梯度品質 |
+|------|---------------|------|---------|
+| Batch GD | 全部 | 慢 | 準 |
+| Stochastic GD | 1 張 | 快但震盪 | 雜訊很多 |
+| **Mini-batch SGD** | 32~256 張 | **平衡** | **夠用** |
+
+現代訓練幾乎都是 mini-batch SGD,batch size 常見 32, 64, 128, 256。
+
+#### 差異 2:Backpropagation — 怎麼算出每個權重的梯度
+
+CNN 有幾百萬個權重,梯度怎麼算?
+
+**反向傳播(backpropagation)** 是答案,核心是**鏈式法則(chain rule)**。
+
+直覺:loss 跟「最後一層的權重」的關係很直接,但跟「第一層的權重」的關係要經過好幾層 — 鏈式法則就是把這個「經過好幾層」的影響一層一層展開。
+
+> **不用自己寫**:PyTorch 的 autograd 會自動幫你算。你只要把 forward 寫對,呼叫 `loss.backward()`,所有權重的梯度就算好了。但要理解**它在做什麼** — 不然後面講「梯度消失」會聽不懂。
+
+#### 差異 3:Loss surface 不是漂亮的碗 — 是崎嶇的山地
+
+`f(x) = x²` 是平滑的碗,只有一個最低點。
+
+但神經網路的 loss surface 是**幾百萬維、超級崎嶇的山地**,有:
+- 很多**局部最小值(local minima)**:看起來像谷底,其實只是小坑
+- **鞍點(saddle point)**:某些方向是谷,某些方向是峰
+- **平坦區域**:梯度接近 0,但不是真正的最低點
+
+```mermaid
+flowchart LR
+    subgraph Loss地形
+        A["起點<br/>(隨機初始化)"] --> B["經過很多坑跟鞍點"]
+        B --> C["最後停在某個<br/>'夠好'的局部最小值"]
+    end
+```
+
+> **重點認知**:訓練神經網路**幾乎不可能**找到全域最小值(global minimum),也**不需要**找到。實務上找到一個夠低的局部最小值,泛化能力就很好。
+>
+> 有趣的是:**很大的網路反而容易訓練**,因為高維空間中真正的局部最小值很少,大部分看起來像「卡住」的地方其實是鞍點,只要有一點隨機性就能跳出去。SGD 的 mini-batch 雜訊剛好幫了大忙。
+
+### 2.5 進階優化器:不只是純梯度下降
+
+純 SGD 在實務上會遇到很多問題,所以發展出一系列改良版。看名字就好,知道在解什麼問題:
+
+#### Momentum(動量) — 給梯度下降加慣性
+
+問題:SGD 在「狹長山谷」(一個方向陡、一個方向平緩)會來回震盪,進展很慢。
+
+解法:加上「速度」的概念,像滾動的球。
+
+```
+速度 = 0.9 × 上一次速度 + 學習率 × 梯度
+新權重 = 舊權重 − 速度
+```
+
+直覺:如果連續幾步梯度都指向同一方向,速度會累積,走得更快。如果梯度方向忽左忽右,速度會互相抵消,自動穩定。
+
+#### Adam — 工業界最常用
+
+Adam 同時做兩件事:
+1. **動量**(累積過去梯度的方向)
+2. **自適應學習率**(每個參數有自己的學習率,梯度大的參數用小 lr,梯度小的用大 lr)
+
+**白話**:Adam 是「裝了腦袋的 SGD」,大部分情況下不用調參就能跑得不錯。**這就是為什麼 PyTorch 教學幾乎都用 `optim.Adam`** — 對新手最友善。
+
+#### 學習率排程(Learning Rate Scheduling)
+
+固定的學習率不夠好。實務上會「隨訓練進度調整 lr」:
+
+- **Step decay**:每 30 epoch 把 lr 除以 10
+- **Cosine annealing**:lr 像餘弦曲線一樣慢慢降下來
+- **Warmup**:訓練初期 lr 從 0 慢慢爬到正常值,避免一開始震盪太大
+
+> **直覺**:訓練早期離谷底還很遠,要大步走;訓練後期接近谷底,要小步精修。**ResNet, YOLO 訓練都會用這套**,後面會看到。
+
+### 2.6 模擬退火 — 走錯路的勇氣
+
+到目前為止講的都是「沿著梯度走」的優化方法。但梯度下降有個致命問題:**它只會往下走,卡在局部最小值就出不來**。
+
+想像一個地形:**有個小山谷在淺處,旁邊有個更深的大山谷**。如果你的起點剛好在小山谷附近,梯度下降會很開心地走到小山谷底部停下來 — 因為周圍都是上坡,梯度告訴它「這裡就是最低點」。
+
+但旁邊還有更深的山谷!梯度下降被卡在 local minimum,看不到 global minimum。
+
+#### 模擬退火的瘋狂想法
+
+**偶爾接受變差的選擇**,這樣才有機會跳出小山谷,去找更深的山谷。
+
+它的靈感來自冶金學的退火(annealing)製程:**打鐵時如果熱鐵突然丟進冷水,金屬內部結構會卡在亂七八糟的高能狀態(脆弱)。但如果慢慢降溫(退火),原子有時間到處挪動、嘗試各種位置,最後會穩定在能量最低的整齊結構(堅固)。**
+
+這個「**高溫時瘋狂亂動,低溫時逐漸穩定**」的想法被搬到優化問題上:
+
+- **高溫**:願意接受很多「變差」的步,大膽探索
+- **降溫過程**:越來越挑剔,只接受小幅變差的步
+- **低溫**:幾乎只接受變好的步,像梯度下降一樣穩穩走到底
+
+#### 演算法步驟
+
+1. 隨便挑個起點
+2. 隨機跳到附近某個點
+3. 如果新點比較好 → **直接接受**
+4. 如果新點比較差 → **以某個機率接受**(關鍵!)
+   - 機率公式:`exp(−Δ / T)`,Δ 是變差多少,T 是當前溫度
+   - 溫度高時機率大,什麼爛點都可能接受
+   - 溫度低時機率小,只有小幅變差才接受
+5. 慢慢降溫
+6. 重複,直到溫度趨近於 0
+
+#### 具體例子:會卡住梯度下降的函數
+
+設計一個函數:
+
+```
+f(x) = x⁴ − 10x² + 5x
+```
+
+這個函數長得像「兩個山谷」:左邊有個**深谷**在 x ≈ −2.4 附近,右邊有個**淺谷**在 x ≈ 2.1 附近。如果起點在 x = 3,梯度下降會直接走進右邊的淺谷,卡死,永遠看不到左邊更深的谷。
+
+**用模擬退火來解(以下是示意,實際有隨機性):**
+
+```
+步驟  x      f(x)     溫度    動作
+1     3.0    -24      10.0   起點
+2     2.7    -36.6    9.5    變好,接受 → 走進右邊淺谷
+3     2.1    -41.7    9.0    繼續變好,接受
+4     2.5    -38.1    8.6    變差!但溫度高,機率高,接受 → 跳出來!
+5     1.4    -25.6    8.1    更差,但機率還行,接受
+6     0.2    0.6      7.7    更差,接受 → 跨過中間的山頭了
+7    -1.5    -29.8    7.3    變好,接受
+8    -2.2    -45.1    6.9    變好,接受 → 進入左邊深谷
+9    -2.4    -45.8    6.6    更好
+...   (隨著溫度降低,越來越不接受變差的步)
+50   -2.42   -45.84   0.6    穩定在左邊深谷的底部 ✓
+```
+
+**看到關鍵步驟沒?** 步驟 4-6 是模擬退火的精髓:它**接受了好幾次「變差」的選擇**,才有機會翻越中間的山頭,走到真正最深的山谷。換成梯度下降,絕對卡在右邊的淺谷出不來。
+
+#### 跟梯度下降的對比
+
+| | 梯度下降 | 模擬退火 |
+|---|---------|---------|
+| 怎麼走 | 沿梯度方向 | 隨機跳 |
+| 要算梯度? | 要 | **不用!**只要能算 f(x) 就行 |
+| 接受變差? | 絕對不要 | **高溫時願意** |
+| 會卡 local minimum? | 容易卡 | 比較不容易 |
+| 速度 | 快 | 慢 |
+| 適合什麼? | 平滑、可微分的函數 | 崎嶇、離散、無法算梯度的問題 |
+
+#### 用在哪些地方?
+
+模擬退火特別擅長**梯度下降做不了的事**:
+
+- **旅行推銷員問題(TSP)**:找最短路線經過所有城市。完全沒有梯度可言,但模擬退火很好用 — 隨機交換兩個城市的順序就是一次「跳」
+- **晶片設計**:把元件擺在晶片上的最佳位置
+- **排班、排課**:一堆離散的限制,沒有梯度
+- **神經網路超參數搜尋**:learning rate, 層數這些不能微分的東西
+
+#### 跟深度學習有什麼關係?
+
+模擬退火本身**不會直接拿來訓練神經網路**(因為梯度太好用了不用白不用),但它的精神 — **「適度的隨機性能幫助跳出局部最小值」** — 已經滲透進現代深度學習:
+
+| 技巧 | 跟模擬退火的精神對應 |
+|------|---------------------|
+| **Mini-batch SGD** | 小 batch 的梯度雜訊,等於每步都有點隨機 → 自然跳出鞍點/局部最小 |
+| **Dropout** | 隨機丟掉 neuron,強迫模型探索不同路徑 |
+| **Learning rate scheduling** | 早期大 lr 像「高溫」(大膽探索),後期小 lr 像「低溫」(精修) |
+| **Mosaic / MixUp** (YOLOv4 用) | 資料隨機混合,等於 loss landscape 持續變動,不容易卡死 |
+| **Stochastic Weight Averaging** | 訓練後期取多個權重的平均,減少落在尖銳 local minimum |
+
+> **一句話總結**:梯度下降是「直線思考的優化」,模擬退火是「接受隨機性的優化」。**現代深度學習的訓練,某種程度是兩者的混血** — 用梯度當主要方向,但加入隨機性來避免卡住。
+
+### 2.7 串起來:CNN 是怎麼變聰明的
+
+回到本章開場的問題。完整流程:
+
+```mermaid
+flowchart LR
+    A["1. 餵一個 batch 的圖<br/>進 CNN"] --> B["2. Forward pass<br/>輸出預測"]
+    B --> C["3. 跟 ground truth 比<br/>算 loss"]
+    C --> D["4. Backpropagation<br/>算出每個權重的梯度"]
+    D --> E["5. Optimizer 更新權重<br/>(SGD/Adam)"]
+    E --> A
+```
+
+這個循環跑幾百萬次,模型就慢慢變聰明。
+
+**關鍵理解:**
+- CNN 的「每一個 kernel 數值」、「BN 的 γ β」、「FC 層的權重」全部都是用這個流程學出來的
+- 訓練完成的標誌是 **loss 不再下降**(梯度接近 0,走不動了)
+- 「訓練要多久」= 「這個循環要跑多少次」
+
+### Gradient Descent Playground
+
+打開互動網頁的 **「Gradient Descent Playground」** tab:
+- 自己選函數(平滑的 x²、崎嶇的多谷函數、有鞍點的函數)
+- 拖拉學習率 slider,看不同 lr 的效果(太大發散、太小慢、剛好)
+- 切換 SGD / SGD+Momentum / Adam,看走的路徑差異
+- 開「模擬退火模式」,看怎麼跳出局部最小值
+- 重點要學弟體會:**learning rate 跟 optimizer 的選擇,真的會影響到能不能訓練起來**
+
+> **這一章看完,他們應該能回答**:
+> 1. 為什麼學習率太大不好、太小也不好?
+> 2. 為什麼 mini-batch 比一次塞全部資料好?
+> 3. 為什麼有時候模型會卡住不再進步?
+> 4. SGD 跟 Adam 差在哪?
+> 5. 為什麼訓練 loop 要 `optimizer.zero_grad()` → `backward()` → `step()` 這個順序?
+
+---
+
+## 3. ResNet 全變體
+
+### 3.1 為什麼需要 ResNet
+
+ResNet 由微軟研究院的 Kaiming He(何愷明)等人在 2015 年提出,論文叫《Deep Residual Learning for Image Recognition》。**152 層的網路在 ILSVRC 2015 拿下 3.57% top-5 error**,比 VGG 深 8 倍但運算複雜度更低。
+
+**這篇論文是 deep learning 史上引用最多的論文之一**,後續所有現代架構幾乎都用了 skip connection,包括 Transformer、YOLO 系列、Diffusion Model。
+
+### 3.2 網路越深一定越好嗎
+
+2014 年大家發現一個怪現象:**把 CNN 疊得很深,訓練 loss 居然變高**(不是 overfitting,是 train loss 就高)。
+
+這違反直覺,理論上深層網路至少應該跟淺層一樣好(深層的可以把多出來的層學成 identity mapping)。但實務上做不到。
 
 ```
 20 層的 CNN  →  train error: 5%
 56 層的 CNN  →  train error: 11%   (蛤?)
 ```
 
-這個問題叫做 **degradation problem**，**不是過擬合(因為 train error 也變高)**，是優化問題 — 我們無法把那麼深的網路訓練起來。
+這個問題叫做 **degradation problem**,**不是過擬合(因為 train error 也變高)**,是優化問題 — 我們無法把那麼深的網路訓練起來。
 
-### 2.3 兇手 - 梯度消失(Gradient Vanishing)
+### 3.3 兇手 - 梯度消失(Gradient Vanishing)
 
-回想 backprop 的鏈式法則，梯度從輸出層往輸入層傳的時候，每經過一層就乘一次該層的偏導數。
+> **接續第 2 章**:現在我們知道訓練靠的是 backpropagation 把梯度一層層傳回去更新權重。問題是 — 梯度在往回傳的過程中會「衰減」。
+
+回想 backprop 的鏈式法則,梯度從輸出層往輸入層傳的時候,**每經過一層就乘一次該層的偏導數**。
 
 ```mermaid
 flowchart RL
@@ -304,36 +679,58 @@ flowchart RL
     end
 ```
 
-如果每層的梯度都小於 1(例如 0.5)，那:
+如果每層的梯度都小於 1(例如 0.5),那:
 - 10 層後:0.5^10 ≈ 0.001
 - 50 層後:0.5^50 ≈ 10^(-15) → 等於 0
 
-**結果:前面的層根本收不到梯度，等於沒在學。**
+**結果:前面的層根本收不到梯度,等於沒在學**(回去看第 2 章的更新公式:梯度 = 0,新權重 ≈ 舊權重,完全沒更新)。
 
-```mermaid
-flowchart RL
-    subgraph ResNet 的梯度路徑
-        direction RL
-        R5["Layer 5<br/>梯度: 1.0"] --> |"× ∂F/∂x + 1"| R4["Layer 4<br/>梯度: ≈1.0"]
-        R4 --> |"× ∂F/∂x + 1"| R3["Layer 3<br/>梯度: ≈1.0"]
-        R3 --> |"× ∂F/∂x + 1"| R2["Layer 2<br/>梯度: ≈1.0"]
-        R2 --> |"× ∂F/∂x + 1"| R1["Layer 1<br/>梯度: ≈1.0"]
-    end
-```
+#### 反過來的災難:梯度爆炸(Gradient Explosion)
 
-> **關鍵差異**: 普通 CNN 的梯度是連乘（越乘越小），ResNet 因為 skip connection 讓梯度有加法項（+1），所以不管多深都不會消失。
+跟梯度消失對稱,如果每層的梯度都大於 1(例如 1.5):
+- 10 層後:1.5^10 ≈ 58
+- 50 層後:1.5^50 ≈ 6 億
+- 100 層後:天文數字
 
-> 直覺類比:從一樓傳話到 50 樓，每傳一層走音 50%，到頂樓已經完全聽不懂。ResNet 的 skip connection 就像給每一樓裝一支直通電話 — 訊息可以直接跳過中間樓層。
+**結果:**
+- 參數更新瘋狂亂跳(回去看公式:`新權重 = 舊權重 − 學習率 × 梯度`,梯度變成 10⁹,參數一步飛到外太空)
+- Loss 變成 NaN(數值大到電腦表示不了)
+- 訓練曲線:loss 原本好好下降,**突然往上飆,然後變 NaN**
 
-### 2.4 ResNet 的解法 - 殘差學習(Residual Learning)
+#### 兩個極端的對照
 
-何愷明的核心想法:**讓網路學的不是直接的映射 H(x)，而是殘差 F(x) = H(x) - x**。
+| | 梯度爆炸 | 梯度消失 |
+|---|---------|---------|
+| 梯度大小 | 大到天上去(10⁹、∞、NaN) | 小到接近 0 |
+| 參數更新 | 一步飛走,亂跳 | 幾乎不動,學不到東西 |
+| 訓練現象 | loss 突然飆高、變 NaN | loss 不太下降,卡住 |
+| 誰受害 | 全部層都亂掉 | **前面幾層最慘**,後面層還能學 |
+| 常見場景 | 深層網路、RNN、權重初始太大 | Sigmoid/Tanh 激活、深層網路、權重初始太小 |
+
+> **直覺記法**:梯度太高會炸,太低會死,訓練深度網路的藝術就是把它穩穩控制在中間。深度學習過去十幾年的進步,有很大一部分就是在解這件事。
+
+#### 經典的解法(全方位防護)
+
+| 方法 | 在做什麼 | 對付誰 |
+|------|---------|--------|
+| **梯度裁剪(Gradient Clipping)** | 設上限例如 5,梯度超過就壓回去 | 主要對付爆炸,RNN/LSTM 必用 |
+| **好的權重初始化(He/Xavier)** | 根據每層 neuron 數量算合適的初始範圍 | 兩個都對付 |
+| **Batch Normalization** | 每層強制標準化,雙向防護 | 兩個都對付 |
+| **ReLU 激活函數** | 正半邊導數恆為 1,不會把梯度壓小 | 主要對付消失 |
+| **Residual Connection (ResNet)** | 給梯度開一條捷徑 | **兩個都對付,最有效** ★ |
+| 降低學習率 | 直接讓步伐變小 | 對付爆炸,治標 |
+
+> 直覺類比:從一樓傳話到 50 樓,每傳一層走音 50%,到頂樓已經完全聽不懂。ResNet 的 skip connection 就像給每一樓裝一支直通電話 — 訊息可以直接跳過中間樓層。
+
+### 3.4 ResNet 的解法 - 殘差學習(Residual Learning)
+
+何愷明的核心想法:**讓網路學的不是直接的映射 H(x),而是殘差 F(x) = H(x) - x**。
 
 ```
 y = F(x) + x
 ```
 
-換句話說，模型只要學「我要在 x 上加什麼東西」，而不是「我要產出什麼」。當這一塊真的沒用，模型可以把 F(x) 學成 0，等於 identity mapping，不會比原本差。
+換句話說,模型只要學「我要在 x 上加什麼東西」,而不是「我要產出什麼」。當這一塊真的沒用,模型可以把 F(x) 學成 0,等於 identity mapping,不會比原本差。
 
 **架構上長這樣:**
 
@@ -355,17 +752,28 @@ flowchart LR
     end
 ```
 
-> **Skip Connection 的梯度公式**: ∂(F(x)+x)/∂x = ∂F(x)/∂x + 1，那個 **+1** 保證梯度永遠不為零。
+```mermaid
+flowchart RL
+    subgraph ResNet 的梯度路徑
+        direction RL
+        R5["Layer 5<br/>梯度: 1.0"] --> |"× ∂F/∂x + 1"| R4["Layer 4<br/>梯度: ≈1.0"]
+        R4 --> |"× ∂F/∂x + 1"| R3["Layer 3<br/>梯度: ≈1.0"]
+        R3 --> |"× ∂F/∂x + 1"| R2["Layer 2<br/>梯度: ≈1.0"]
+        R2 --> |"× ∂F/∂x + 1"| R1["Layer 1<br/>梯度: ≈1.0"]
+    end
+```
+
+> **關鍵差異**: 普通 CNN 的梯度是連乘(越乘越小),ResNet 因為 skip connection 讓梯度有加法項(+1),所以不管多深都不會消失。
 
 **為什麼這樣有用?(三個視角)**
 
-1. **梯度直接通路** — backward 時梯度可以直接從後面層流到前面層，不會被中間層稀釋(因為 ∂(F+x)/∂x = ∂F/∂x + 1，那個 +1 保證梯度永遠有東西)
-2. **學殘差比學整體容易** — 模型只要學差量，起點已經很近
-3. **退化解(degradation solution)** — 如果這一塊沒用，F(x) 學成 0 就好，不會劣化
+1. **梯度直接通路** — backward 時梯度可以直接從後面層流到前面層,不會被中間層稀釋(因為 ∂(F+x)/∂x = ∂F/∂x + 1,那個 +1 保證梯度永遠有東西)
+2. **學殘差比學整體容易** — 模型只要學差量,起點已經很近
+3. **退化解(degradation solution)** — 如果這一塊沒用,F(x) 學成 0 就好,不會劣化
 
-### 2.5 兩種殘差區塊
+### 3.5 兩種殘差區塊
 
-ResNet 有兩種 building block，看模型大小決定用哪一種:
+ResNet 有兩種 building block,看模型大小決定用哪一種:
 
 #### Basic Block(用於 ResNet-18， ResNet-34)
 
@@ -409,11 +817,11 @@ flowchart TD
 | 兩層 3×3 | 3×3×256×256 × 2 | 256×256×9 × 2 | 1,179,648 |
 | Bottleneck | 1×1×256×64 + 3×3×64×64 + 1×1×64×256 | 16,384 + 36,864 + 16,384 | 69,632 |
 
-> **省了 17 倍的參數!** Bottleneck 的精神:**讓貴的運算(3×3 conv)在比較少的 channel 上做**。這個技巧後續所有架構都沿用，YOLO 也是。
+> **省了 17 倍的參數!** Bottleneck 的精神:**讓貴的運算(3×3 conv)在比較少的 channel 上做**。這個技巧後續所有架構都沿用,YOLO 也是。
 
-### 2.6 完整層配置(Stage 設計)
+### 3.6 完整層配置(Stage 設計)
 
-ResNet 由 5 個階段組成，所有變體都遵循這個結構:
+ResNet 由 5 個階段組成,所有變體都遵循這個結構:
 
 ```mermaid
 flowchart TD
@@ -441,13 +849,13 @@ flowchart TD
 | **FLOPs** | | 1.8G | 3.6G | 3.8G | 7.6G | 11.3G |
 
 **幾個觀察重點:**
-- 每個 stage 的 channel 數翻倍(64→128→256→512)，空間尺寸減半 → **資訊量大致守恆**
-- 用 GAP 取代 FC，大幅減少參數量
-- 整個架構非常規律，**後面所有 backbone 設計都沿用這個 pattern**(包括 Darknet-53、CSPDarknet)
+- 每個 stage 的 channel 數翻倍(64→128→256→512),空間尺寸減半 → **資訊量大致守恆**
+- 用 GAP 取代 FC,大幅減少參數量
+- 整個架構非常規律,**後面所有 backbone 設計都沿用這個 pattern**(包括 Darknet-53、CSPDarknet)
 
-### 2.7 下採樣機制 - Downsampling
+### 3.7 下採樣機制 - Downsampling
 
-在 conv3_x、conv4_x、conv5_x 的**第一個** residual block，第一個 3×3 conv 用 stride=2 來下採樣。但這時候 input 跟 output 的 channel/spatial 不匹配，沒辦法直接相加，所以 shortcut 也要對應調整 — **用 1×1 stride=2 的 conv 做 projection**(這叫 projection shortcut)。
+在 conv3_x、conv4_x、conv5_x 的**第一個** residual block,第一個 3×3 conv 用 stride=2 來下採樣。但這時候 input 跟 output 的 channel/spatial 不匹配,沒辦法直接相加,所以 shortcut 也要對應調整 — **用 1×1 stride=2 的 conv 做 projection**(這叫 projection shortcut)。
 
 ```python
 if stride != 1 or in_channels != out_channels:
@@ -459,9 +867,9 @@ else:
     self.shortcut = nn.Identity()  # 直接用 x
 ```
 
-### 2.8 Pre-activation ResNet(ResNet v2)
+### 3.8 Pre-activation ResNet(ResNet v2)
 
-何愷明在 2016 年又發了一篇《Identity Mappings in Deep Residual Networks》，提出 **pre-activation** 設計。
+何愷明在 2016 年又發了一篇《Identity Mappings in Deep Residual Networks》,提出 **pre-activation** 設計。
 
 把 BN， ReLU 從 conv 之後移到 conv 之前:
 
@@ -482,8 +890,8 @@ flowchart LR
 ```
 
 **為什麼這樣更好?**
-- 原版:shortcut 加完還要過 ReLU，**梯度路徑被破壞**(ReLU 的負半邊梯度為 0)
-- v2:shortcut 是純 identity，**梯度直接無損傳遞**
+- 原版:shortcut 加完還要過 ReLU,**梯度路徑被破壞**(ReLU 的負半邊梯度為 0)
+- v2:shortcut 是純 identity,**梯度直接無損傳遞**
 
 ```mermaid
 flowchart TD
@@ -496,13 +904,15 @@ flowchart TD
 
 結果:**可以訓練到 1000+ 層**(原版到 200 層就開始劣化)。
 
-### 2.9 訓練細節
+### 3.9 訓練細節
 
-- 輸入 224×224，per-pixel mean subtraction
-- SGD with momentum 0.9，weight decay 1e-4
-- Learning rate 從 0.1 開始，error plateau 時除以 10
+- 輸入 224×224,per-pixel mean subtraction
+- SGD with momentum 0.9,weight decay 1e-4
+- Learning rate 從 0.1 開始,error plateau 時除以 10
 - Batch size 256
 - **沒有用 Dropout**(用 BN 取代)
+
+> **回顧第 2 章**:這裡的 "SGD with momentum"、"lr 從 0.1 開始,plateau 時除以 10" 就是我們講過的 SGD+Momentum 跟 Step decay scheduling。看到了吧,**第 2 章不是純理論**,實際訓練 ResNet/YOLO 都會用到。
 
 ### Gradient Vanishing
 
@@ -514,9 +924,9 @@ flowchart TD
 
 ---
 
-## 3. YOLO 系列演進
+## 4. YOLO 系列演進
 
-### 3.1 物件偵測 vs 分類
+### 4.1 物件偵測 vs 分類
 
 先區分清楚兩件事:
 
@@ -543,7 +953,7 @@ flowchart LR
 
 偵測比分類難很多，因為要同時回答 **「在哪」** 和 **「是什麼」**，而且物體數量不固定（一張圖可能 0 個物體，也可能 100 個）。
 
-### 3.2 在 YOLO 之前 - Two-stage Detector
+### 4.2 在 YOLO 之前 - Two-stage Detector
 
 YOLO 出現之前，主流是 R-CNN 系列(R-CNN → Fast R-CNN → Faster R-CNN)，做法是:
 
@@ -576,7 +986,7 @@ flowchart LR
 
 > **FPS (Frames Per Second)** 即時偵測通常要求 ≥ 30 FPS，意味著模型必須在 33ms 內完成整張圖的推論。
 
-### 3.3 YOLOv1(2016) - One-stage 開山之作
+### 4.3 YOLOv1(2016) - One-stage 開山之作
 
 > 論文:*You Only Look Once: Unified， Real-Time Object Detection* (Redmon et al.， 2016)
 > 關鍵字:**單階段、grid prediction、real-time**
@@ -656,7 +1066,7 @@ Loss = λ_coord × Σ (定位誤差: x， y， w， h)
 - 對奇怪比例物件泛化差
 - 用 FC 層，參數多
 
-### 3.4 YOLOv2 / YOLO9000(2016/2017)
+### 4.4 YOLOv2 / YOLO9000(2016/2017)
 
 > 論文:*YOLO9000: Better， Faster， Stronger*
 > 關鍵字:**Anchor box、Batch Norm、Multi-scale training**
@@ -715,7 +1125,7 @@ bh = ph × e^(th)      # 高度 = anchor 高 × e^(預測量)
 
 用 WordTree 整合 ImageNet(分類資料)+ COCO(偵測資料)，可偵測 9000+ 類別，即使該類別沒有偵測標註。
 
-### 3.5 YOLOv3(2018) - Multi-scale Prediction
+### 4.5 YOLOv3(2018) - Multi-scale Prediction
 
 > 論文:*YOLOv3: An Incremental Improvement*
 > 關鍵字:**Darknet-53、三尺度預測、FPN-like**
@@ -787,7 +1197,7 @@ YOLOv3 用 **sigmoid + binary cross-entropy 取代 softmax**，因為:
 - COCO 的 label 不是互斥的
 - BCE 訓練更穩定
 
-### 3.6 YOLOv4(2020) - 工程集大成
+### 4.6 YOLOv4(2020) - 工程集大成
 
 > 論文:*YOLOv4: Optimal Speed and Accuracy of Object Detection* (Bochkovskiy， Wang， Liao)
 > 關鍵字:**Backbone+Neck+Head、Bag of Freebies、Bag of Specials**
@@ -877,6 +1287,8 @@ flowchart LR
 - **Mosaic data augmentation**(4 張圖拼一張，讓模型一次看到很多 context)
 
 > **Mosaic 具體做法**: 隨機取 4 張訓練圖片，分別隨機裁切，拼成一張 2×2 的大圖。好處有三：(1) 一個 batch 等於看了 4 倍的圖片，BN 統計量更準 (2) 圖片邊緣自然產生了各種縮小的物體，等同小物體增強 (3) 背景更多樣化。
+>
+> **連結到第 2 章**: 注意 Mosaic 引入了大量隨機性,等於每個 batch 看到的「資料」都不一樣 — 這就是我們在模擬退火段落講到的「適度隨機性能幫助跳出局部最小值」的精神。
 
 - **CutMix**
 
@@ -931,7 +1343,7 @@ flowchart LR
 
 COCO test-dev 2017:**AP 43.5%， AP50 65.7%**，V100 GPU **超過 50 FPS**。
 
-### 3.7 YOLOv5(2020， Ultralytics) - 工業界主流
+### 4.7 YOLOv5(2020， Ultralytics) - 工業界主流
 
 > 不是學術論文，**但因為好用紅了**
 
@@ -998,7 +1410,7 @@ flowchart TD
 - **Letterbox**(自適應圖片縮放，保持 aspect ratio)
 - Loss:BCE (cls， obj) + CIoU (box)
 
-### 3.8 YOLOv6(2022， 美團)
+### 4.8 YOLOv6(2022， 美團)
 
 > 主打**工業部署**，backbone-neck-head 模組化
 
@@ -1079,7 +1491,7 @@ flowchart TD
 - 訓練後量化(PTQ)+ 量化感知訓練(QAT)
 - T4 上 YOLOv6-N 達 **1234 FPS**，AP 35.9%
 
-### 3.9 YOLOv7(2022)
+### 4.9 YOLOv7(2022)
 
 > 論文:*YOLOv7: Trainable Bag-of-Freebies Sets New State-of-the-Art for Real-Time Object Detectors*
 > 關鍵字:**E-ELAN、planned re-param、auxiliary head**
@@ -1116,7 +1528,7 @@ flowchart TD
 
 COCO 達 **56.8% AP**，5–160 FPS 範圍內 SOTA。
 
-### 3.10 YOLOv8(2023， Ultralytics)
+### 4.10 YOLOv8(2023， Ultralytics)
 
 > 整合多任務支援(detection / segmentation / pose / classification)
 
@@ -1226,7 +1638,7 @@ flowchart LR
 | YOLOv8l | 43.7M | 52.9 | large |
 | YOLOv8x | 68.2M | 53.9 | extra large |
 
-### 3.11 YOLO 各版本對照總表
+### 4.11 YOLO 各版本對照總表
 
 | 版本 | 年份 | Backbone | Neck | Head | Anchor | Loss 重點 |
 |------|------|----------|------|------|--------|-----------|
@@ -1239,7 +1651,7 @@ flowchart LR
 | **v7** | 2022 | E-ELAN | SPPCSPC + PANet | Lead+Aux head | Anchor-based | CIoU + BCE |
 | **v8** | 2023 | CSPDarknet (C2f) | SPPF + PAN (no 1×1) | Decoupled Anchor-free | 無 | CIoU + DFL + BCE |
 
-### 3.12 通用設計脈絡演進
+### 4.12 通用設計脈絡演進
 
 ```mermaid
 flowchart TD
@@ -1303,9 +1715,9 @@ flowchart LR
 
 ---
 
-## 4. PyTorch 組模型實作
+## 5. PyTorch 組模型實作
 
-### 4.1 nn.Module 是什麼
+### 5.1 nn.Module 是什麼
 
 PyTorch 裡所有的模型都繼承自 `nn.Module`。它做的事情:
 1. **管理所有 parameter**(自動追蹤，給 optimizer 用)
@@ -1313,7 +1725,7 @@ PyTorch 裡所有的模型都繼承自 `nn.Module`。它做的事情:
 3. **支援 train/eval 模式切換**(影響 BN， Dropout 行為)
 4. **自動 backward**(只要 forward 寫對，backward 不用自己寫)
 
-### 4.2 一個最簡單的 CNN
+### 5.2 一個最簡單的 CNN
 
 ```python
 import torch
@@ -1345,7 +1757,7 @@ class SimpleCNN(nn.Module):
 - `forward` 定義「怎麼用」
 - backward 完全自動，**不用自己寫**
 
-### 4.3 寫一個 ResNet Block
+### 5.3 寫一個 ResNet Block
 
 ```python
 class ResidualBlock(nn.Module):
@@ -1382,7 +1794,7 @@ class ResidualBlock(nn.Module):
 
 **這幾行就是 ResNet 的精髓**。理解這個 block，就理解 ResNet 90% 的內容。
 
-### 4.4 訓練流程怎麼跑
+### 5.4 訓練流程怎麼跑
 
 ```mermaid
 sequenceDiagram
@@ -1436,6 +1848,8 @@ for epoch in range(num_epochs):
             ...
 ```
 
+> **回顧第 2 章**: 看 `optimizer.zero_grad()` → `loss.backward()` → `optimizer.step()` 這三行 — 這就是我們講過的「**算梯度 → 更新權重 = 新權重 = 舊權重 - 學習率 × 梯度**」的 PyTorch 實作。Adam 就是進階版的 optimizer,做的事情本質上一樣。
+
 **新手最常踩的雷:**
 1. 忘記 `optimizer.zero_grad()` → 梯度會累加
 2. 忘記 `model.train()` / `model.eval()` 切換 → BN 行為不對
@@ -1443,7 +1857,7 @@ for epoch in range(num_epochs):
 4. tensor 沒搬 GPU → CPU/GPU mismatch error
 5. 用 `view` 而不是 `reshape` 在非 contiguous tensor 上 → runtime error
 
-### 4.5 YOLO 跟分類模型的差別在哪
+### 5.5 YOLO 跟分類模型的差別在哪
 
 如果學弟要刻 YOLO，跟前面的 SimpleCNN 差在:
 
@@ -1488,7 +1902,7 @@ flowchart LR
 
 ---
 
-## 5. Q&A + 作業說明
+## 6. Q&A + 作業說明
 
 ### 作業 1 詳細說明
 
@@ -1514,6 +1928,7 @@ flowchart LR
    - 你考慮了哪些 trade-off
    - 為什麼選 anchor-based / anchor-free
    - Loss 怎麼設計
+   - **訓練細節:用了哪個 optimizer、學習率怎麼設、有沒有用 lr scheduling**(回顧第 2 章內容)
 
 4. **在自選資料集上訓練到收斂**
    - 可以用 COCO subset(只取 5 個類別之類的)
@@ -1549,6 +1964,7 @@ GitHub repo，包含:
 - 卡在資料前處理 → 來問
 - 不確定設計合不合理 → 來問
 - 找不到資料集 → 來問
+- **訓練 loss 不下降 / 變 NaN** → 來問(很可能是第 2 章梯度爆炸/消失或學習率的問題)
 
 **不可以做的事:**
 - 直接複製 GitHub 上的 YOLO 實作
@@ -1564,10 +1980,16 @@ GitHub repo，包含:
 - YOLOv4: https://arxiv.org/abs/2004.10934
 - YOLOv7: https://arxiv.org/abs/2207.02696
 
+**優化相關(第 2 章延伸):**
+- Adam optimizer: https://arxiv.org/abs/1412.6980
+- SGD with Momentum: https://distill.pub/2017/momentum/(超棒的互動式文章)
+- 模擬退火: https://en.wikipedia.org/wiki/Simulated_annealing
+
 **推薦影片:**
 - [李宏毅 - CNN](https://www.youtube.com/watch?v=OP5HcXJg2Aw)
 - [Aladdin Persson 的 YOLOv1 from scratch](https://www.youtube.com/watch?v=n9_XyCGr-MI)
 - [Yannic Kilcher 的 ResNet 解讀](https://www.youtube.com/watch?v=lugkZaFj4x8)
+- [3Blue1Brown - Gradient Descent 視覺化](https://www.youtube.com/watch?v=IHZwWFHWa-w)(必看,梯度下降視覺化做得超好)
 
 **官方文件:**
 - PyTorch 官方教學:https://pytorch.org/tutorials/

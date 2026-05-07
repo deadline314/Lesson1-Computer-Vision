@@ -1,0 +1,104 @@
+    <h2 class="section-title">FC vs Conv</h2>
+    <span class="section-tag">為什麼不直接用全連接?</span>
+    <p class="section-desc">
+      你可能會問:既然<span class="term" data-term="fc">全連接層 (FC)</span>能擬合任何函數,為什麼還要 Conv?
+      答案是<strong>參數量</strong>。下面動態算給你看,有圖有真相。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">FC 是什麼</div>
+        <div class="concept-card-text">每個輸入都連到每個輸出,參數量 = input × output。彈性最大,但...也最貴。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">Conv 為什麼省</div>
+        <div class="concept-card-text">同一個 kernel 在整張圖<span class="term" data-term="weightshare">共用權重</span>。一個 3×3 kernel = 9 個參數,不管圖多大。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">Inductive Bias</div>
+        <div class="concept-card-text">Conv 內建「相鄰像素相關、特徵位置不變」的假設。FC 完全沒有,要從頭學起。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">現代用法</div>
+        <div class="concept-card-text">Conv 提取特徵 → GAP 壓縮 → FC 做最後分類。FC 通常只剩最後一層。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>輸入圖片尺寸</span><span class="val" id="fcSizeVal">224 × 224</span></div>
+          <input type="range" id="fcSize" min="32" max="512" value="224" step="16">
+          <div class="slider-help">越大張參數爆炸越誇張</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>輸出 channel(下一層神經元)</span><span class="val" id="fcOutVal">1024</span></div>
+          <input type="range" id="fcOut" min="64" max="2048" value="1024" step="64">
+          <div class="slider-help">FC 是 neuron 數;Conv 是 filter 數</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">參數量大比拼</div>
+      <div id="fcCompare" style="margin-top: 12px;">
+        <div class="compare-bar">
+          <div class="compare-bar-label" style="color: var(--red);">FC 全連接</div>
+          <div class="compare-bar-fill"><div class="compare-bar-inner" id="fcFcBar" style="width: 100%; background: var(--red);"></div></div>
+        </div>
+        <div class="compare-bar">
+          <div class="compare-bar-label" style="color: var(--green);">Conv 3×3</div>
+          <div class="compare-bar-fill"><div class="compare-bar-inner" id="fcConvBar" style="width: 5%; background: var(--green);"></div></div>
+        </div>
+        <div class="compare-bar">
+          <div class="compare-bar-label" style="color: var(--blue);">Conv 1×1</div>
+          <div class="compare-bar-fill"><div class="compare-bar-inner" id="fcConv1Bar" style="width: 1%; background: var(--blue);"></div></div>
+        </div>
+      </div>
+
+      <div class="info-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 16px;">
+        <div class="info-cell">
+          <div class="info-cell-label">FC 參數量</div>
+          <div class="info-cell-value" id="fcFcCount" style="color: var(--red);">—</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-cell-label">Conv 3×3 參數量</div>
+          <div class="info-cell-value" id="fcConvCount" style="color: var(--green);">—</div>
+        </div>
+        <div class="info-cell">
+          <div class="info-cell-label">Conv 1×1 參數量</div>
+          <div class="info-cell-value" id="fcConv1Count" style="color: var(--blue);">—</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px; padding: 14px 16px; background: rgba(200, 85, 61, 0.1); border-radius: 6px; font-family: 'Patrick Hand', cursive; font-size: 14px; color: var(--ink);">
+        💀 FC 比 Conv 多 <span id="fcRatio" style="color: var(--red); font-weight: 700;">—</span> 倍參數!所以根本不用考慮直接接 FC。
+      </div>
+    </div>
+
+    <h3 class="subhead">為什麼 Conv 可以共用權重</h3>
+    <div class="panel">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center;">
+        <div>
+          <div style="font-family: 'Caveat', cursive; font-size: 22px; color: var(--red); margin-bottom: 12px;">FC 的世界觀</div>
+          <p style="font-size: 14px; line-height: 1.7; color: var(--ink-soft);">
+            把整張圖攤平成一條線。左上角的像素跟右下角的像素「平等」 — 這完全違背圖片的本質
+            (相鄰像素其實相關性很高)。所以 FC 要從零學起「什麼是空間關係」。
+          </p>
+        </div>
+        <div>
+          <div style="font-family: 'Caveat', cursive; font-size: 22px; color: var(--green); margin-bottom: 12px;">Conv 的世界觀</div>
+          <p style="font-size: 14px; line-height: 1.7; color: var(--ink-soft);">
+            「貓的眼睛」這種 pattern 不管出現在圖的哪個位置,都應該被同一個偵測器抓到。
+            所以一個 kernel 滑遍整張圖 = 共用權重 = 大幅減少參數。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="note-title">參數量的概念</div>
+      <strong>FC 隨輸入尺寸線性增長</strong> — 224×224 比 32×32 多 49 倍參數。
+      <strong>Conv 跟輸入尺寸無關</strong> — 一個 3×3 kernel 永遠 9 個參數,不管圖多大。
+      這就是為什麼現代視覺模型幾乎全是 Conv,FC 只剩最後一層當分類器。
+    </div>

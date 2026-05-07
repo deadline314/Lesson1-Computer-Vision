@@ -1,0 +1,116 @@
+    <h2 class="section-title">殘差學習現場</h2>
+    <span class="section-tag">y = F(x) + x · 一個 +x 改變世界</span>
+    <p class="section-desc">
+      <span class="term" data-term="residual">殘差學習</span>是 ResNet 的核心發明。
+      下面動態看 F(x)、x、F(x)+x 三個訊號的關係,以及為什麼這條 skip connection 能解決梯度消失。
+    </p>
+
+    <div class="concept-cards">
+      <div class="concept-card"><span class="concept-card-pin"></span>
+        <div class="concept-card-title">原本的學法</div>
+        <div class="concept-card-text">直接學 H(x) — 從 input 學到 output 該長什麼樣。難。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--green)"></span>
+        <div class="concept-card-title">殘差的學法</div>
+        <div class="concept-card-text">學 F(x) = H(x) − x — 只學「需要在 x 上加什麼東西」。簡單多了。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--blue)"></span>
+        <div class="concept-card-title">退化解</div>
+        <div class="concept-card-text">如果這層沒用,模型可以把 F(x) 學成 0,等於 identity。<strong>不會比原本差</strong>。</div>
+      </div>
+      <div class="concept-card"><span class="concept-card-pin" style="background: var(--purple)"></span>
+        <div class="concept-card-title">梯度高速公路</div>
+        <div class="concept-card-text">∂(F+x)/∂x = ∂F/∂x + 1。那個 +1 保證梯度永遠有東西傳回去。</div>
+      </div>
+    </div>
+
+    <div class="controls-box">
+      <div class="controls-grid">
+        <div class="slider-wrap">
+          <div class="slider-label"><span>F(x) 學到的「殘差」幅度</span><span class="val" id="resAmpVal">0.5</span></div>
+          <input type="range" id="resAmp" min="0" max="100" value="50" step="5">
+          <div class="slider-help">模擬 conv block 學到的調整量</div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-label"><span>F(x) 的相位偏移</span><span class="val" id="resPhaseVal">0</span></div>
+          <input type="range" id="resPhase" min="0" max="100" value="20" step="5">
+          <div class="slider-help">調整 F(x) 的形狀</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <div class="panel-label">三條訊號的疊加</div>
+        <svg id="resPlot" class="plot" viewBox="0 0 500 320" width="100%"></svg>
+        <div style="display: flex; justify-content: center; gap: 16px; margin-top: 14px; font-family: 'Patrick Hand', cursive; font-size: 14px;">
+          <span><span style="display: inline-block; width: 14px; height: 4px; background: var(--blue); vertical-align: middle;"></span> input x</span>
+          <span><span style="display: inline-block; width: 14px; height: 4px; background: var(--orange); vertical-align: middle;"></span> F(x)</span>
+          <span><span style="display: inline-block; width: 14px; height: 4px; background: var(--red); vertical-align: middle;"></span> F(x) + x</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">Residual Block 結構</div>
+        <div class="resblock-svg-wrap">
+          <svg viewBox="0 0 360 380" width="100%" style="max-width: 320px;">
+            <defs>
+              <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+                <path d="M0,0 L8,5 L0,10 Z" fill="#3d2f1f"/>
+              </marker>
+            </defs>
+            <!-- input -->
+            <rect x="130" y="15" width="100" height="40" rx="6" fill="#fff8e7" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="40" text-anchor="middle" font-family="Caveat, cursive" font-size="20" fill="#3d2f1f" font-weight="700">x (input)</text>
+            <!-- arrow down to conv1 -->
+            <line x1="180" y1="55" x2="180" y2="80" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- conv1 -->
+            <rect x="120" y="85" width="120" height="32" rx="6" fill="#6a9b5e" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="106" text-anchor="middle" font-family="Kalam, cursive" font-size="14" fill="#fff" font-weight="700">Conv 3×3</text>
+            <!-- arrow -->
+            <line x1="180" y1="117" x2="180" y2="125" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- bn -->
+            <rect x="120" y="130" width="120" height="28" rx="6" fill="#e8c547" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="149" text-anchor="middle" font-family="Kalam, cursive" font-size="13" fill="#3d2f1f" font-weight="700">BN + ReLU</text>
+            <line x1="180" y1="158" x2="180" y2="166" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- conv2 -->
+            <rect x="120" y="171" width="120" height="32" rx="6" fill="#6a9b5e" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="192" text-anchor="middle" font-family="Kalam, cursive" font-size="14" fill="#fff" font-weight="700">Conv 3×3</text>
+            <line x1="180" y1="203" x2="180" y2="211" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- bn2 -->
+            <rect x="120" y="216" width="120" height="28" rx="6" fill="#e8c547" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="234" text-anchor="middle" font-family="Kalam, cursive" font-size="13" fill="#3d2f1f" font-weight="700">BN</text>
+            <line x1="180" y1="244" x2="180" y2="265" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- skip connection arc -->
+            <path d="M 110 35 Q 30 35, 30 280 Q 30 290, 60 290" fill="none" stroke="#c8553d" stroke-width="3" stroke-dasharray="6,4"/>
+            <text x="50" y="170" font-family="Caveat, cursive" font-size="22" fill="#c8553d" font-weight="700" transform="rotate(-90 50 170)">skip connection</text>
+            <line x1="60" y1="290" x2="160" y2="290" stroke="#c8553d" stroke-width="3" stroke-dasharray="6,4" marker-end="url(#arr)"/>
+            <!-- plus circle -->
+            <circle cx="180" cy="290" r="20" fill="#fff8e7" stroke="#3d2f1f" stroke-width="2.5"/>
+            <text x="180" y="297" text-anchor="middle" font-family="Caveat, cursive" font-size="28" fill="#c8553d" font-weight="700">+</text>
+            <line x1="180" y1="310" x2="180" y2="328" stroke="#3d2f1f" stroke-width="2" marker-end="url(#arr)"/>
+            <!-- ReLU final -->
+            <rect x="120" y="333" width="120" height="28" rx="6" fill="#e8c547" stroke="#3d2f1f" stroke-width="2"/>
+            <text x="180" y="352" text-anchor="middle" font-family="Kalam, cursive" font-size="13" fill="#3d2f1f" font-weight="700">ReLU</text>
+            <!-- F(x) label -->
+            <text x="260" y="160" font-family="Caveat, cursive" font-size="22" fill="#e89c50" font-weight="700">F(x)</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="subhead">梯度視覺化:傳統 vs Residual</h3>
+    <div class="panel">
+      <p style="font-size: 14px; color: var(--ink-soft); margin-bottom: 16px;">
+        想像 backward 時梯度從輸出層往前傳。傳統 CNN 每經過一層就衰減,ResNet 因為有 +1 的 identity path,梯度可以直接「跳過」中間層。
+      </p>
+      <svg id="resGradFlow" class="plot" viewBox="0 0 800 240" width="100%" style="background: #fff;"></svg>
+      <button class="btn primary" id="resAnimBtn" style="margin-top: 14px; width: 100%;">⏵ 播放梯度反向傳播動畫</button>
+    </div>
+
+    <div class="note">
+      <div class="note-title">為什麼這個發明這麼重要</div>
+      ResNet 之前,網路深度被卡在 30 層左右(再深 train loss 反而變高)。
+      ResNet 之後,<strong>深度不再是問題</strong>。Transformer、Diffusion、所有 LLM 也都用這個技巧。
+      可以說 deep learning 從 2015 年之後的發展都是建立在這條看似簡單的 +x 路徑上。
+    </div>
