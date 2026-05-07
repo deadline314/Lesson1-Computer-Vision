@@ -22,10 +22,10 @@
       const plainGrad = Math.pow(0.7, d);            // multiplicative decay
       const resnetGrad = Math.max(plainGrad, 0.4 + 0.6*Math.exp(-d/40));
       const p1 = document.createElement('div');
-      p1.style.cssText = `flex:1;background:${color(plainGrad)};`;
+      p1.style.cssText = `flex:1;height:100%;background:${color(plainGrad)};`;
       plain.appendChild(p1);
       const p2 = document.createElement('div');
-      p2.style.cssText = `flex:1;background:${color(resnetGrad)};`;
+      p2.style.cssText = `flex:1;height:100%;background:${color(resnetGrad)};`;
       resnet.appendChild(p2);
     }
   }

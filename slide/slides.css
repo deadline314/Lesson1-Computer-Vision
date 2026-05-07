@@ -244,8 +244,9 @@
 }
 .timeline-item {
   position: relative;
-  padding: 12px 0 24px;
+  padding: 4px 0 14px;
 }
+.timeline-item:last-child { padding-bottom: 0; }
 .timeline-item::before {
   content: '';
   position: absolute;
@@ -258,21 +259,24 @@
 }
 .timeline-item .year {
   font-family: 'Caveat', cursive;
-  font-size: 28px;
+  font-size: 26px;
   color: var(--red);
   font-weight: 700;
+  display: inline-block;
+  margin-right: 12px;
 }
 .timeline-item .name {
   font-family: 'Shippori Mincho', serif;
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  display: inline-block;
 }
 .timeline-item .desc {
   font-family: 'Patrick Hand', cursive;
-  font-size: 22px;
+  font-size: 20px;
   color: var(--ink-soft);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 /* Gradient flow demo (for ResNet) */

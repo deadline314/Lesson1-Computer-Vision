@@ -31,7 +31,18 @@
 "激活函數的演進你不用全記,但要知道 YOLO 各代用過 ReLU、Leaky ReLU、Mish、SiLU。重點概念是 dying ReLU —— ReLU 在 x<0 永遠輸出 0,某個 neuron 死了就回不來。Leaky ReLU 給負半邊一個小斜率解決這個問題。",
 "CNN 演進史快速帶過。LeNet 1998 開山祖師、AlexNet 2012 才用 GPU 證明 deep learning 可行、VGG 證明深度的價值、GoogLeNet 用了 Inception 多分支、ResNet 2015 引入 skip connection 改變一切。我們下一段就要重點講 ResNet。",
 "這是第一個互動 demo:Convolution Playground。你可以直接改 kernel 的 9 個值,或選預設(Sobel、Gaussian、Sharpen),即時看到輸出 feature map 的變化。重點是理解 —— CNN 的第一層其實就在做這種事,只是 kernel 是學出來的。",
-"進入第二大段:ResNet 全變體。這一段要回答一個問題:為什麼把 CNN 疊深會出事,以及何愷明怎麼用一招解決它。",
+"在進入 ResNet 之前,我們先把一個更基礎的問題打開。前面講 CNN 一直說 kernel 是學出來的、BN 的 γβ 是可學參數,但「學」到底是什麼?這 11 張投影片就是把那個黑盒子打開。理解這段,後面講梯度消失才有意義,不然就只是名詞解釋。",
+"先看一個情境。你寫好 CNN,權重隨機初始化,第一次 forward 餵一張貓的圖,模型輸出「飛機」—— 因為亂猜。問題是,它怎麼從亂猜進步到分得出貓狗?答案就兩步:① 算出現在錯多少 (loss),② 依錯的方向調權重 (梯度下降)。整個深度學習就是這兩件事的無限循環。",
+"梯度的一句話定義:往哪個方向走,函數值上升最快。一維時就是斜率,f(x)=x² 在 x=3 梯度是 +6。多維時變向量,f(x,y)=x²+y² 在點 (3,4) 梯度是 (6,8),方向指向上升最陡那條路、長度是該方向的斜率。神經網路的梯度就是一個跟全部權重一樣多的超大向量,告訴你每個權重要往哪邊調,我們走反方向。",
+"梯度下降公式:新權重 = 舊權重 − 學習率 × 梯度。這一行是深度學習的心臟。看表格 f(x)=x² 從 x=5 出發,lr=0.1,50 步就到谷底。注意一個重點 —— 越接近谷底梯度越小,步伐自動縮小,這個自動煞車不需要設計,梯度下降本身就有。直覺類比就是盲人下山,摸最陡方向往反方向跨一小步。",
+"學習率是訓練最關鍵的超參數,沒有之一。三個情境:lr 太大會發散,跨太大跳過谷底永遠到不了;lr 剛好穩穩到底;lr 太小要 10 倍時間,電費爆增。業界共識:Adam 預設 1e-3、SGD 預設 0.1 配 momentum 0.9。Loss 直接變 NaN 八成是 lr 太大,先把 lr 減半再說。",
+"從 toy example 到神經網路有三個關鍵差異。① Mini-batch SGD —— 不要一次餵全部資料,用 32 到 256 張的小批次,平衡速度跟梯度品質。② Backpropagation —— 幾百萬個權重的梯度用鏈式法則展開,PyTorch autograd 自動處理。③ Loss surface 不是漂亮的碗,是幾百萬維的崎嶇山地。神奇的是大網路反而好訓練,因為高維空間裡真正的局部最小很少,大多是鞍點,SGD 雜訊剛好幫你跳出去。",
+"Optimizer 的演進三步走。SGD 最樸素照梯度走,但在狹長山谷會震盪。加上 Momentum 像滾動的球,速度累積讓震盪自動穩定。Adam 同時做動量加自適應學習率,每個參數有自己的 lr,工業界最常用,新手默認選擇。另外要記學習率排程 —— 訓練早期離谷底遠用大 lr,後期接近谷底用小 lr,常見有 step decay、cosine annealing、warmup。ResNet 跟 YOLO 訓練都用這套。",
+"接下來講一個很有趣的優化方法 —— 模擬退火。它解決梯度下降的死穴 —— 卡在 local minimum。如果起點在淺谷附近,梯度只往下走會卡死,看不到旁邊更深的大谷。模擬退火的瘋狂想法是偶爾接受變差的選擇。靈感來自冶金學的退火:熱鐵慢慢降溫,原子有時間嘗試各種位置,最後到能量最低的整齊結構。演算法五句話:隨機跳一步,變好就接受,變差時以機率 exp(−Δ/T) 接受,慢慢降 T。",
+"模擬退火跟梯度下降是兩種優化哲學。最大差別是退火不需要算梯度、且高溫時願意接受變差。所以它能解梯度下降做不了的事 —— TSP、晶片擺位、排班這種離散沒梯度的問題。但實際訓練神經網路還是用梯度下降,因為梯度太好用不用白不用。重點是退火的精神已經滲透進現代深度學習 —— mini-batch SGD 雜訊、Dropout、Mosaic、LR scheduling 全都是「適度的隨機性能幫助跳出局部最小」這個精神的應用。",
+"把這一章串起來。CNN 變聰明就是這個五步驟循環:餵 batch → forward → 算 loss → backprop → optimizer 更新權重,然後回到第一步。跑幾百萬次,模型就慢慢變聰明。所有 conv kernel、BN 的 γβ、FC 權重 —— 全部都是這個循環跑出來的。訓練完成的標誌就是 loss 不再下降,梯度趨近 0,走不動了。",
+"第二個互動 demo:Gradient Descent Playground。可以選地形 —— 平滑碗、多谷函數、震盪函數;切 optimizer —— SGD、Momentum、Adam、Anneal;拉動 lr slider。建議玩三件事:① 切到多谷,用 SGD 從預設位置會卡淺谷,切到 Anneal 模式高溫亂跳幾次有機會跳到深谷。② 把 lr 拉到 0.4 看 SGD 在震盪函數上發散。③ 對比 SGD 跟 Adam 在多谷的軌跡差異。玩兩分鐘比聽我講十分鐘有用。",
+"進入第三大段:ResNet 全變體。這一段要回答一個問題:為什麼把 CNN 疊深會出事,以及何愷明怎麼用一招解決它。剛剛講完梯度下降,你已經知道梯度從輸出傳回輸入是怎麼回事 —— 接下來看深層網路裡梯度會發生什麼災難。",
 "ResNet 是 2015 年微軟研究院何愷明等人的論文,深度 152 層,top-5 error 3.57%,直接改變了 deep learning。後續 Transformer、YOLO、Diffusion、ViT 全部用了 skip connection。記住一句話:這篇論文之後,深度學習才真正叫 deep。",
 "2014 年大家發現一個怪現象:把 CNN 從 20 層疊到 56 層,訓練誤差不降反升。注意,是訓練誤差,不是測試誤差,所以不是 overfit。這個叫 degradation problem,意思是我們連訓練都搞不定,不是訓練好了 generalization 不好。",
 "兇手是梯度消失。Backprop 從輸出傳回輸入,每經過一層就乘一次該層的偏導數。如果每層梯度都小於 1,乘 50 次後梯度就趨近 0。前面的層收不到梯度,等於沒在學。這就是為什麼疊太深訓練不起來。",
@@ -175,8 +186,8 @@
   <div class="kicker anim-fade">先想一個問題</div>
   <h2 class="slide-title underline anim-rise mb-24">電腦看到的圖,長這樣 ↓</h2>
   <div class="anim-rise-1" data-demo="demo-pixel-guess"></div>
-  <div class="big-quote anim-rise-2" style="margin-top: 24px; font-size: 36px;">
-    那要怎麼從這堆數字判斷「<span style="background: var(--yellow); padding: 0 8px;">有沒有貓</span>」?
+  <div class="anim-rise-2" style="margin-top: 32px; font-family: 'Shippori Mincho', serif; font-size: 44px; font-weight: 500; line-height: 1.4; color: var(--ink); text-align: center;">
+    那要怎麼從這堆數字判斷<span style="color: var(--orange); font-size: 56px;">「</span>有沒有貓<span style="color: var(--orange); font-size: 56px;">」</span>?
   </div>
 </section>
 
@@ -580,9 +591,21 @@
       <div class="subline mt-16 text-green">✓ 參數從幾百萬降到幾千</div>
     </div>
   </div>
-</section>
 
-<!-- 1.4 Aux components: BN -->
+  <div class="cols-2 anim-rise-3 mt-32" style="gap: 24px;">
+    <div class="note-callout" style="background:rgba(176,82,72,0.12);">
+      <div class="note-title">為什麼 FC 參數爆炸?</div>
+      AlexNet 的 FC 層:<code style="font-size:18px;">7×7×256 → 4096</code>,光這一層就 <strong>3700 萬參數</strong> ——
+      整個模型 60M 裡有 90% 在 FC。一旦 input size 變,FC 整個失效。
+    </div>
+    <div class="note-callout" style="background:rgba(106,155,94,0.15);">
+      <div class="note-title">GAP 怎麼省?</div>
+      <code style="font-size:18px;">7×7×512 → 1×1×512</code>,<strong>每個 channel 取一個平均值</strong>,
+      0 個參數。後面接 1×1 Conv 當 classifier ——
+      input size 多大都吃,順便當 regularization。
+    </div>
+  </div>
+</section>
 <section data-screen-label="17 Batch Normalization">
   <div class="section-marker"><span class="num">01</span>·4<br>BN</div>
   <div class="kicker anim-fade">輔助組件 · Batch Normalization</div>
@@ -685,9 +708,385 @@ y = γ · (x - μ) / σ + β</pre>
 </section>
 
 <!-- ============================================================
+     SECTION 1.5 — 訓練的本質 (梯度與優化)
+     ============================================================ -->
+<section data-screen-label="21 §1.5 訓練的本質" class="divider">
+  <div>
+    <div class="kicker anim-fade no-star" style="justify-content: center;">
+      <span style="font-family: 'Shippori Mincho', serif; color: var(--orange); font-weight: 800; font-size: 56px;">§ 1.5</span>
+    </div>
+    <h1 class="slide-title giant anim-rise" style="color: var(--paper);">
+      訓練的<span class="scribble" style="color: var(--orange);">本質</span>
+    </h1>
+    <div class="subline anim-rise-1" style="color: var(--paper-dark); margin-top: 32px; font-size: 36px;">
+      梯度 · 梯度下降 · 優化器 · 模擬退火
+    </div>
+    <div class="subline anim-rise-2" style="color: var(--paper-dark); margin-top: 16px; font-size: 24px; opacity: 0.75;">
+      「kernel 是學出來的」—— 到底怎麼學?
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="22 模型怎麼變聰明">
+  <div class="section-marker"><span class="num">01.5</span>·1<br>怎麼學</div>
+  <div class="kicker anim-fade">先想一個情境</div>
+  <h2 class="slide-title underline anim-rise mb-24">第一次 forward,模型輸出「飛機」(其實是貓)</h2>
+
+  <div class="cols-2 anim-rise-1" style="gap: 48px; align-items: center;">
+    <div>
+      <div class="lead serif" style="line-height: 1.7;">
+        權重隨機初始化 → 預測完全亂猜<br>
+        那它怎麼從「亂猜」變成「分得出貓狗」?
+      </div>
+      <div class="mt-24" style="font-size: 24px; line-height: 1.8;">
+        <div><span class="chip orange">1</span> &nbsp;算出「現在錯多少」 → <em>loss function</em></div>
+        <div class="mt-16"><span class="chip red">2</span> &nbsp;依錯的方向調權重 → <em>梯度下降</em></div>
+      </div>
+    </div>
+    <div class="anim-pop-2">
+      <div class="card" style="padding: 28px;">
+        <div class="card-pin orange"></div>
+        <div class="card-title" style="margin-left: 0;">整個深度學習的本質</div>
+        <div class="card-body" style="font-size: 24px; line-height: 1.6;">
+          就是這兩件事的<strong>無限循環</strong>。<br><br>
+          這一章把「<span class="caveat">學</span>」這個黑盒子打開。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="23 梯度是什麼">
+  <div class="section-marker"><span class="num">01.5</span>·2<br>梯度</div>
+  <div class="kicker anim-fade">梯度到底是什麼</div>
+  <h2 class="slide-title underline anim-rise mb-24">「往哪個方向走,函數值上升最快」</h2>
+
+  <div class="cols-2 anim-rise-1" style="gap: 40px;">
+    <div class="card" style="padding: 24px;">
+      <div class="card-pin yellow"></div>
+      <div class="card-title" style="margin-left: 0;">一維 · 梯度 = 斜率</div>
+      <div class="card-body" style="font-size: 22px; line-height: 1.7;">
+        <code style="background:#fff8e7;padding:2px 6px;">f(x) = x²</code><br>
+        <code style="background:#fff8e7;padding:2px 6px;">f'(x) = 2x</code><br><br>
+        x = 3 → 梯度 = <strong>+6</strong> (往右上升)<br>
+        x = -2 → 梯度 = <strong>-4</strong> (負號=反向)
+      </div>
+    </div>
+    <div class="card" style="padding: 24px;">
+      <div class="card-pin red"></div>
+      <div class="card-title" style="margin-left: 0;">多維 · 梯度 = 向量</div>
+      <div class="card-body" style="font-size: 22px; line-height: 1.7;">
+        <code style="background:#fff8e7;padding:2px 6px;">f(x,y) = x² + y²</code><br>
+        在點 (3, 4):<br>
+        梯度 = <strong>(6, 8)</strong><br>
+        方向 = 上升最陡那條路<br>
+        長度 = √(36+64) = <strong>10</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-callout anim-rise-3 mt-24">
+    神經網路的梯度 = 一個跟「全部權重一樣多」的<strong>超大向量</strong>,<br>
+    告訴你「每個權重要往哪邊調、調多少,才能讓 loss 上升最快」 —— 我們走<em>反方向</em>。
+  </div>
+</section>
+
+<section data-screen-label="24 梯度下降公式">
+  <div class="section-marker"><span class="num">01.5</span>·3<br>核心公式</div>
+  <div class="kicker anim-fade">梯度下降 · 盲人下山</div>
+  <h2 class="slide-title underline anim-rise mb-24">深度學習的心臟,就這一行</h2>
+
+  <div class="anim-pop-1" style="text-align: center; margin: 20px 0 32px;">
+    <pre class="code" style="display:inline-block;font-size: 36px; padding: 36px 56px; margin: 0;">新權重 = 舊權重 − <span style="color:#e89c50;">學習率</span> × <span style="color:#6ab7ff;">梯度</span></pre>
+  </div>
+
+  <div class="cols-2 anim-rise-2" style="gap: 32px;">
+    <div>
+      <div class="card-title" style="margin-left: 0;">f(x) = x², lr = 0.1, 從 x=5 出發</div>
+      <pre class="code" style="font-size: 22px; margin-top: 8px;">step  x        f(x)     gradient
+  1   5.000    25.00    10.00
+  2   4.000    16.00     8.00
+  3   3.200    10.24     6.40
+  5   2.048     4.19     4.10
+ 20   0.058     0.003    0.116
+ 50   ≈0       ≈0       ≈0      ✓</pre>
+    </div>
+    <div>
+      <div class="note-callout" style="background: rgba(106,155,94,0.18);">
+        <div class="note-title">自動煞車</div>
+        越接近谷底,梯度(斜率)越小,步伐自動縮小。
+        <strong>不需要額外設計</strong>,梯度下降本身就有這個性質。
+      </div>
+      <div class="mt-16" style="font-size: 22px;">
+        <span class="chip orange">直覺</span> 盲人下山 —— 摸最陡方向,往反方向跨小步,重複。
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="25 學習率的雷">
+  <div class="section-marker"><span class="num">01.5</span>·3<br>lr 的雷</div>
+  <div class="kicker anim-fade">學習率太大 / 太小會怎樣</div>
+  <h2 class="slide-title underline anim-rise mb-24">lr 是訓練最關鍵的超參數,沒有之一</h2>
+
+  <div class="cols-3 anim-rise-1" style="gap:28px;">
+    <div class="card" style="padding: 22px;">
+      <div class="card-pin red"></div>
+      <div class="card-title" style="margin-left:0;color:var(--red);">太大 · 發散</div>
+      <pre class="code" style="font-size:20px;margin:12px 0;">x=5   → −6.0
+x=−6  → 7.2
+x=7.2 → −8.6
+... 越走越遠</pre>
+      <div style="font-size:22px;">跨太大 → 跳過谷底 → 永遠到不了</div>
+    </div>
+    <div class="card" style="padding: 22px;">
+      <div class="card-pin green"></div>
+      <div class="card-title" style="margin-left:0;color:var(--green);">剛好</div>
+      <pre class="code" style="font-size:20px;margin:12px 0;">step 5  → 2.05
+step 20 → 0.06
+step 50 → ≈0
+✓ 順利收斂</pre>
+      <div style="font-size:22px;">穩穩下山,合理時間到底</div>
+    </div>
+    <div class="card" style="padding: 22px;">
+      <div class="card-pin orange"></div>
+      <div class="card-title" style="margin-left:0;color:var(--orange);">太小 · 龜速</div>
+      <pre class="code" style="font-size:20px;margin:12px 0;">step 100  → 4.1
+step 1000 → 0.7
+要 10 倍時間
+才到同位置</pre>
+      <div style="font-size:22px;">電費 + GPU 時間爆增</div>
+    </div>
+  </div>
+
+  <div class="note-callout anim-rise-3 mt-24" style="background: rgba(232,197,71,0.22);">
+    <div class="note-title">業界共識</div>
+    Adam 預設 <code>lr=1e-3</code>;SGD 預設 <code>lr=0.1</code> 配 momentum 0.9。
+    訓練 loss 直接變 NaN → 80% 是 lr 太大。
+  </div>
+</section>
+
+<section data-screen-label="26 SGD 與 backprop">
+  <div class="section-marker"><span class="num">01.5</span>·4<br>實戰差異</div>
+  <div class="kicker anim-fade">從 toy example 到神經網路</div>
+  <h2 class="slide-title underline anim-rise mb-24">三個關鍵差異</h2>
+
+  <div class="anim-rise-1" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+    <div class="card" style="padding: 24px;">
+      <div class="card-pin blue"></div>
+      <div class="card-title" style="margin-left:0;">① Mini-batch SGD</div>
+      <table style="width:100%;font-size:18px;border-collapse:collapse;margin-top:8px;">
+        <tr><th style="text-align:left;border-bottom:1px solid var(--line);padding:4px;">方法</th><th style="border-bottom:1px solid var(--line);padding:4px;">每次</th><th style="border-bottom:1px solid var(--line);padding:4px;">速度</th></tr>
+        <tr><td style="padding:4px;">Batch GD</td><td style="text-align:center;">全部</td><td style="text-align:center;">慢</td></tr>
+        <tr><td style="padding:4px;">SGD</td><td style="text-align:center;">1 張</td><td style="text-align:center;">震盪</td></tr>
+        <tr style="background:rgba(106,155,94,0.15);"><td style="padding:4px;"><strong>Mini-batch</strong></td><td style="text-align:center;"><strong>32~256</strong></td><td style="text-align:center;"><strong>平衡 ✓</strong></td></tr>
+      </table>
+    </div>
+    <div class="card" style="padding: 24px;">
+      <div class="card-pin purple"></div>
+      <div class="card-title" style="margin-left:0;">② Backpropagation</div>
+      <div style="font-size:20px;line-height:1.6;margin-top:8px;">
+        幾百萬個權重,每個梯度怎麼算?<br>
+        <strong>鏈式法則</strong> 一層一層展開。<br><br>
+        <span class="chip yellow">PyTorch</span> autograd 自動處理。<br>
+        你只要寫對 forward,
+        <code>loss.backward()</code> 一行就好。
+      </div>
+    </div>
+  </div>
+
+  <div class="note-callout anim-rise-3 mt-24">
+    <div class="note-title">③ Loss surface 不是漂亮的碗</div>
+    神經網路的 loss surface 是<strong>幾百萬維、超級崎嶇的山地</strong>:有無數 local minima、鞍點、平坦區。
+    神奇的是 —— <em>大網路反而好訓練</em>,因為高維空間真正的局部最小很少,大多是鞍點,SGD 的雜訊剛好幫你跳出去。
+  </div>
+</section>
+
+<section data-screen-label="27 Optimizer 演進">
+  <div class="section-marker"><span class="num">01.5</span>·5<br>Optimizer</div>
+  <div class="kicker anim-fade">進階優化器 · 不只是純 SGD</div>
+  <h2 class="slide-title underline anim-rise mb-24">SGD → Momentum → Adam</h2>
+
+  <div class="anim-rise-1" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+    <div class="card" style="padding: 22px;">
+      <div class="card-pin yellow"></div>
+      <div class="card-title" style="margin-left:0;">SGD</div>
+      <div class="card-body" style="font-size:20px;">
+        最樸素 —— 完全照梯度走。<br><br>
+        <strong style="color:var(--red);">問題:</strong> 在狹長山谷會來回震盪。
+      </div>
+    </div>
+    <div class="card" style="padding: 22px;">
+      <div class="card-pin orange"></div>
+      <div class="card-title" style="margin-left:0;">+ Momentum</div>
+      <div class="card-body" style="font-size:20px;">
+        加上「速度」概念 —— 像滾動的球。<br><br>
+        同方向梯度會累積,反向會抵消。<br>
+        <strong>自動穩定</strong>。
+      </div>
+    </div>
+    <div class="card" style="padding: 22px;">
+      <div class="card-pin green"></div>
+      <div class="card-title" style="margin-left:0;">Adam ★</div>
+      <div class="card-body" style="font-size:20px;">
+        動量 + <strong>每個參數自適應 lr</strong>。<br><br>
+        <span class="chip green">工業界最常用</span><br>
+        新手默認選擇,通常不調都跑得不錯。
+      </div>
+    </div>
+  </div>
+
+  <div class="cols-2 anim-rise-3 mt-24" style="gap:32px;align-items:center;">
+    <div>
+      <div class="card-title" style="margin-left:0;">學習率排程 (LR Scheduling)</div>
+      <div style="font-size:20px;line-height:1.7;margin-top:8px;">
+        <span class="chip ink">Step decay</span> 每 30 epoch ÷10<br>
+        <span class="chip ink">Cosine</span> 像餘弦曲線降下來<br>
+        <span class="chip ink">Warmup</span> 初期從 0 慢慢爬<br>
+      </div>
+    </div>
+    <div class="note-callout" style="background:rgba(74,135,168,0.15);">
+      <div class="note-title">直覺</div>
+      <strong>早期離谷底遠 → 大步走</strong>;<br>
+      <strong>後期接近谷底 → 小步精修</strong>。<br>
+      ResNet / YOLO 訓練都用這套。
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="28 模擬退火">
+  <div class="section-marker"><span class="num">01.5</span>·6<br>模擬退火</div>
+  <div class="kicker anim-fade">走錯路的勇氣</div>
+  <h2 class="slide-title underline anim-rise mb-24">「偶爾接受變差的選擇」 —— 為了跳出小山谷</h2>
+
+  <div class="cols-2 anim-rise-1" style="gap: 36px; align-items: stretch;">
+    <div class="card" style="padding: 24px;">
+      <div class="card-pin red"></div>
+      <div class="card-title" style="margin-left:0;">梯度下降的死穴</div>
+      <div class="card-body" style="font-size:21px;line-height:1.6;">
+        起點若在<strong>淺谷</strong>附近,梯度只往下走,<br>
+        會卡死,看不到旁邊更深的<strong>大谷</strong>。<br><br>
+        <em>local minimum trap</em>
+      </div>
+    </div>
+    <div class="card" style="padding: 24px;">
+      <div class="card-pin orange"></div>
+      <div class="card-title" style="margin-left:0;">退火的靈感 · 冶金學</div>
+      <div class="card-body" style="font-size:21px;line-height:1.6;">
+        熱鐵突然丟冷水 → 卡在亂結構 (脆)<br>
+        慢慢降溫 → 原子有時間嘗試各位置 → 整齊結構 (堅固)<br><br>
+        <strong>高溫亂動 · 低溫穩定</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-callout anim-rise-3 mt-24" style="background:rgba(200,85,61,0.12);">
+    <div class="note-title">演算法 5 句話</div>
+    隨便挑起點 → 隨機跳一步 → 變好就接受 →
+    <strong>變差時以機率 <code>exp(−Δ/T)</code> 接受</strong> → 慢慢降 T 直到穩定。
+  </div>
+</section>
+
+<section data-screen-label="29 退火 vs 梯度下降">
+  <div class="section-marker"><span class="num">01.5</span>·6<br>對比</div>
+  <div class="kicker anim-fade">兩種優化哲學</div>
+  <h2 class="slide-title underline anim-rise mb-24">直線思考 vs 接受隨機性</h2>
+
+  <table class="anim-rise-1" style="width:100%;border-collapse:collapse;font-size:22px;">
+    <thead>
+      <tr style="background:var(--ink);color:var(--paper);">
+        <th style="padding:10px;text-align:left;">維度</th>
+        <th style="padding:10px;">梯度下降</th>
+        <th style="padding:10px;">模擬退火</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid var(--line);"><td style="padding:10px;">怎麼走</td><td style="padding:10px;text-align:center;">沿梯度方向</td><td style="padding:10px;text-align:center;">隨機跳</td></tr>
+      <tr style="border-bottom:1px solid var(--line);background:rgba(232,197,71,0.1);"><td style="padding:10px;">要算梯度?</td><td style="padding:10px;text-align:center;">要</td><td style="padding:10px;text-align:center;"><strong>不用</strong> ✓</td></tr>
+      <tr style="border-bottom:1px solid var(--line);"><td style="padding:10px;">接受變差?</td><td style="padding:10px;text-align:center;">絕對不</td><td style="padding:10px;text-align:center;"><strong>高溫時願意</strong></td></tr>
+      <tr style="border-bottom:1px solid var(--line);"><td style="padding:10px;">會卡 local min?</td><td style="padding:10px;text-align:center;">容易卡</td><td style="padding:10px;text-align:center;">不容易</td></tr>
+      <tr><td style="padding:10px;">適合什麼</td><td style="padding:10px;text-align:center;">平滑、可微</td><td style="padding:10px;text-align:center;">崎嶇、離散、TSP、排班</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note-callout anim-rise-3 mt-24">
+    <div class="note-title">滲透進深度學習的精神</div>
+    Mini-batch SGD 的雜訊、Dropout、Mosaic、LR scheduling …
+    本質都是<strong>「適度的隨機性能幫助跳出局部最小」</strong>。
+    現代訓練 = 梯度當主方向 + 隨機性避免卡住。
+  </div>
+</section>
+
+<section data-screen-label="30 訓練循環全圖">
+  <div class="section-marker"><span class="num">01.5</span>·7<br>串起來</div>
+  <div class="kicker anim-fade">CNN 是怎麼變聰明的</div>
+  <h2 class="slide-title underline anim-rise mb-24">五步驟循環 · 跑幾百萬次</h2>
+
+  <div class="anim-rise-1" style="display:flex;justify-content:space-between;gap:14px;margin:24px 0;align-items:stretch;">
+    <div class="card" style="flex:1;padding:18px;text-align:center;">
+      <div style="font-family:'Caveat',cursive;font-size:30px;color:var(--orange);">①</div>
+      <div style="font-size:18px;margin-top:8px;font-weight:700;">餵 batch</div>
+      <div style="font-size:15px;color:var(--ink-soft);">的圖進 CNN</div>
+    </div>
+    <div style="display:flex;align-items:center;font-size:24px;color:var(--orange);">→</div>
+    <div class="card" style="flex:1;padding:18px;text-align:center;">
+      <div style="font-family:'Caveat',cursive;font-size:30px;color:var(--orange);">②</div>
+      <div style="font-size:18px;margin-top:8px;font-weight:700;">Forward</div>
+      <div style="font-size:15px;color:var(--ink-soft);">輸出預測</div>
+    </div>
+    <div style="display:flex;align-items:center;font-size:24px;color:var(--orange);">→</div>
+    <div class="card" style="flex:1;padding:18px;text-align:center;">
+      <div style="font-family:'Caveat',cursive;font-size:30px;color:var(--orange);">③</div>
+      <div style="font-size:18px;margin-top:8px;font-weight:700;">算 Loss</div>
+      <div style="font-size:15px;color:var(--ink-soft);">vs ground truth</div>
+    </div>
+    <div style="display:flex;align-items:center;font-size:24px;color:var(--orange);">→</div>
+    <div class="card" style="flex:1;padding:18px;text-align:center;">
+      <div style="font-family:'Caveat',cursive;font-size:30px;color:var(--orange);">④</div>
+      <div style="font-size:18px;margin-top:8px;font-weight:700;">Backprop</div>
+      <div style="font-size:15px;color:var(--ink-soft);">算所有梯度</div>
+    </div>
+    <div style="display:flex;align-items:center;font-size:24px;color:var(--orange);">→</div>
+    <div class="card" style="flex:1;padding:18px;text-align:center;">
+      <div style="font-family:'Caveat',cursive;font-size:30px;color:var(--orange);">⑤</div>
+      <div style="font-size:18px;margin-top:8px;font-weight:700;">Optimizer</div>
+      <div style="font-size:15px;color:var(--ink-soft);">更新權重</div>
+    </div>
+  </div>
+  <div class="anim-rise-2" style="text-align:center;font-size:22px;color:var(--red);font-family:'Caveat',cursive;">↻ 回到 ① ,跑 100 萬次</div>
+
+  <div class="cols-2 anim-rise-3 mt-24" style="gap:24px;">
+    <div class="note-callout" style="background:rgba(106,155,94,0.18);">
+      <div class="note-title">這個循環學到了什麼?</div>
+      所有 conv kernel、所有 BN 的 γβ、所有 FC 權重 —— 全部都是這個循環跑出來的。
+    </div>
+    <div class="note-callout" style="background:rgba(74,135,168,0.15);">
+      <div class="note-title">訓練完成的標誌</div>
+      Loss 不再下降 → 梯度 ≈ 0 → 走不動了 → 訓練結束。
+    </div>
+  </div>
+</section>
+
+<!-- Gradient Descent Playground demo (interactive) -->
+<section data-screen-label="31 Demo · Gradient Descent Playground">
+  <div class="section-marker"><span class="num">01.5</span>·D<br>Demo</div>
+  <div class="kicker anim-fade">★ 互動 demo · Gradient Descent Playground</div>
+  <h2 class="slide-title underline anim-rise mb-16">親手調 lr 跟 optimizer,看球怎麼下山</h2>
+
+  <div id="gdDemoWrap" class="anim-rise-1" style="margin: 8px auto; max-width: 720px;"></div>
+
+  <div class="note-callout anim-rise-3 mt-16" style="font-size:20px;">
+    <strong>試試看:</strong>
+    切到「多谷」函數,用 SGD 從預設位置會卡淺谷;<br>
+    切到 <strong>Anneal</strong> 模式 → 高溫亂跳幾次,有機會跳到深谷。<br>
+    把 lr 拉到 0.4 看 SGD 在「鞍/震盪」函數上發散。
+  </div>
+</section>
+
+<!-- ============================================================
      SECTION 2 — RESNET
      ============================================================ -->
-<section data-screen-label="21 §2 ResNet" class="divider">
+<section data-screen-label="32 §2 ResNet" class="divider">
   <div>
     <div class="kicker anim-fade no-star" style="justify-content: center;">
       <span style="font-family: 'Shippori Mincho', serif; color: var(--orange); font-weight: 800; font-size: 56px;">§ 2</span>
@@ -805,15 +1204,74 @@ y = γ · (x - μ) / σ + β</pre>
 
 <section data-screen-label="25 直覺類比">
   <div class="section-marker"><span class="num">02</span>·3<br>類比</div>
-  <div class="center" style="text-align: center;">
-    <div class="big-quote anim-rise" style="max-width: 1500px;">
-      從一樓傳話到 50 樓,<br>
-      每傳一層走音 50%,<br>
-      到頂樓已經<span style="background: var(--yellow); padding: 0 8px;">完全聽不懂</span>。
+  <div class="kicker anim-fade">直覺類比</div>
+  <h2 class="slide-title underline anim-rise mb-24">大樓裡的傳話遊戲</h2>
+
+  <div class="cols-2 anim-rise-1" style="gap: 60px; align-items: center; margin-top: 16px;">
+    <!-- Left: plain tower -->
+    <div style="text-align: center;">
+      <div style="font-family: 'Caveat', cursive; font-size: 32px; color: var(--red); margin-bottom: 16px;">普通 CNN</div>
+      <div style="display: inline-block; position: relative;">
+        <svg width="280" height="380" viewBox="0 0 280 380" style="display: block;">
+          <!-- floors -->
+          <g font-family="JetBrains Mono, monospace" font-size="14" fill="#3a2e22" text-anchor="middle">
+            <rect x="40" y="20" width="200" height="56" fill="#f7e9c5" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="52">50F · 「???」</text>
+            <rect x="40" y="84" width="200" height="56" fill="#f5dfae" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="116" opacity="0.7">35F · 「???」</text>
+            <rect x="40" y="148" width="200" height="56" fill="#eecf95" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="180" opacity="0.85">20F · 「貓?狗?」</text>
+            <rect x="40" y="212" width="200" height="56" fill="#e3bb7c" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="244">10F · 「橘色貓」</text>
+            <rect x="40" y="276" width="200" height="56" fill="#d6a563" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="308">1F · 「橘色波斯貓」</text>
+          </g>
+          <!-- Distortion arrows - shows degrading -->
+          <g stroke="#c14b3a" stroke-width="2" fill="#c14b3a">
+            <path d="M 250 304 Q 268 240 250 176" fill="none" stroke-dasharray="3,3"/>
+            <path d="M 250 176 Q 268 112 250 48" fill="none" stroke-dasharray="3,3"/>
+            <text x="265" y="240" font-family="Caveat, cursive" font-size="20" transform="rotate(90 265 240)">走音 50%</text>
+          </g>
+        </svg>
+      </div>
+      <div style="margin-top: 8px; font-family: 'Patrick Hand', cursive; font-size: 24px; color: #c14b3a;">
+        到頂樓已經<span style="background: var(--yellow); padding: 0 6px;">完全聽不懂</span>
+      </div>
     </div>
-    <div class="subline anim-rise-2 mt-48" style="font-size: 30px;">
-      ResNet 的 skip connection 就像給每一樓裝一支<span class="caveat" style="font-size: 36px;">直通電話</span><br>
-      訊息可以直接跳過中間樓層
+
+    <!-- Right: skip-connection tower -->
+    <div style="text-align: center;">
+      <div style="font-family: 'Caveat', cursive; font-size: 32px; color: #2a8d4a; margin-bottom: 16px;">ResNet (有 Skip)</div>
+      <div style="display: inline-block; position: relative;">
+        <svg width="320" height="380" viewBox="0 0 320 380" style="display: block;">
+          <g font-family="JetBrains Mono, monospace" font-size="14" fill="#3a2e22" text-anchor="middle">
+            <rect x="40" y="20" width="200" height="56" fill="#cfe6c4" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="52">50F · 「橘色波斯貓」</text>
+            <rect x="40" y="84" width="200" height="56" fill="#cfe6c4" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="116">35F · 「橘色波斯貓」</text>
+            <rect x="40" y="148" width="200" height="56" fill="#cfe6c4" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="180">20F · 「橘色波斯貓」</text>
+            <rect x="40" y="212" width="200" height="56" fill="#cfe6c4" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="244">10F · 「橘色波斯貓」</text>
+            <rect x="40" y="276" width="200" height="56" fill="#cfe6c4" stroke="#3a2e22" stroke-width="2.5" rx="4"/>
+            <text x="140" y="308">1F · 「橘色波斯貓」</text>
+          </g>
+          <!-- direct phone line -->
+          <g stroke="#2a8d4a" stroke-width="3" fill="none">
+            <path d="M 260 304 L 290 304 L 290 48 L 260 48"/>
+            <circle cx="260" cy="304" r="5" fill="#2a8d4a"/>
+            <circle cx="260" cy="240" r="5" fill="#2a8d4a"/>
+            <circle cx="260" cy="176" r="5" fill="#2a8d4a"/>
+            <circle cx="260" cy="112" r="5" fill="#2a8d4a"/>
+            <circle cx="260" cy="48" r="5" fill="#2a8d4a"/>
+            <path d="M 290 304 L 260 240 M 290 240 L 260 176 M 290 176 L 260 112 M 290 112 L 260 48" stroke-dasharray="0"/>
+          </g>
+          <text x="305" y="180" font-family="Caveat, cursive" font-size="22" fill="#2a8d4a" transform="rotate(90 305 180)">直通電話</text>
+        </svg>
+      </div>
+      <div style="margin-top: 8px; font-family: 'Patrick Hand', cursive; font-size: 24px; color: #2a8d4a;">
+        每層都裝<span class="caveat" style="font-size: 30px;">直通電話</span>,訊息<strong>無損</strong>
+      </div>
     </div>
   </div>
 </section>
@@ -1007,11 +1465,29 @@ y = γ · (x - μ) / σ + β</pre>
     </div>
   </div>
 
-  <div class="note-callout anim-rise-3 mt-32">
-    <div class="note-title">★ 資訊守恆原則</div>
-    每個 stage <strong>空間尺寸減半</strong>(÷2),<strong>channel 翻倍</strong>(×2)<br>
-    <code>56×56×64 ≈ 28×28×128 ≈ 14×14×256 ≈ 200K</code>
-    —— 總資訊量守恆,後面所有 backbone 都沿用這 pattern。
+  <div class="cols-2 anim-rise-2 mt-24" style="gap: 32px; align-items: stretch;">
+    <div class="note-callout" style="background:rgba(74,135,168,0.12);">
+      <div class="note-title">★ 資訊守恆原則</div>
+      每個 stage <strong>空間尺寸減半</strong>(÷2),<strong>channel 翻倍</strong>(×2)<br>
+      <code style="font-size:18px;">56×56×64 ≈ 28×28×128 ≈ 14×14×256 ≈ 200K</code><br>
+      <span style="font-size:18px;color:var(--ink-soft);">後面所有 backbone 都沿用這 pattern</span>
+    </div>
+    <div class="note-callout" style="background:rgba(106,155,94,0.15);">
+      <div class="note-title">★ 五種變體只差 block 數</div>
+      <table style="width:100%;font-size:18px;border-collapse:collapse;margin-top:8px;">
+        <thead><tr style="border-bottom:2px solid var(--ink-soft);text-align:left;">
+          <th style="padding:4px 8px;">model</th><th>conv2</th><th>conv3</th><th>conv4</th><th>conv5</th><th>params</th>
+        </tr></thead>
+        <tbody style="font-family:'JetBrains Mono',monospace;">
+          <tr><td style="padding:4px 8px;">ResNet-18</td><td>2</td><td>2</td><td>2</td><td>2</td><td>11.7M</td></tr>
+          <tr><td style="padding:4px 8px;">ResNet-34</td><td>3</td><td>4</td><td>6</td><td>3</td><td>21.8M</td></tr>
+          <tr style="background:rgba(217,119,87,0.10);"><td style="padding:4px 8px;"><strong>ResNet-50</strong></td><td>3</td><td>4</td><td>6</td><td>3</td><td>25.6M</td></tr>
+          <tr><td style="padding:4px 8px;">ResNet-101</td><td>3</td><td>4</td><td>23</td><td>3</td><td>44.5M</td></tr>
+          <tr><td style="padding:4px 8px;">ResNet-152</td><td>3</td><td>8</td><td>36</td><td>3</td><td>60.2M</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:16px;color:var(--ink-soft);margin-top:8px;">50 以上用 Bottleneck</div>
+    </div>
   </div>
 </section>
 
@@ -1425,7 +1901,45 @@ bh = ph · e^(th)      <span class="com"># anchor 高 × 縮放</span></pre>
   <div class="kicker anim-fade">YOLOv4 (2020) · 工程集大成</div>
   <h2 class="slide-title underline anim-rise mb-16">三段式架構 · Backbone-Neck-Head</h2>
   <div class="anim-rise-1" data-demo="demo-bnh-flow"></div>
-</section>
+
+  <div class="cols-3 anim-rise-2 mt-24" style="gap: 24px;">
+    <div class="card" style="padding: 20px;">
+      <div class="card-pin blue"></div>
+      <div class="card-body">
+        <div style="font-family:'Caveat',cursive;font-size:30px;color:var(--blue);">Backbone</div>
+        <div style="font-size:20px;font-weight:700;margin-top:4px;">特徵抽取</div>
+        <div style="font-size:18px;color:var(--ink-soft);line-height:1.5;margin-top:8px;">
+          v4 用 <strong>CSPDarknet-53</strong>。從圖片擠出 multi-scale feature
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding: 20px;">
+      <div class="card-pin orange"></div>
+      <div class="card-body">
+        <div style="font-family:'Caveat',cursive;font-size:30px;color:var(--orange);">Neck</div>
+        <div style="font-size:20px;font-weight:700;margin-top:4px;">特徵融合</div>
+        <div style="font-size:18px;color:var(--ink-soft);line-height:1.5;margin-top:8px;">
+          v4 用 <strong>SPP + PANet</strong>。混合不同 scale 的語意 + 細節
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding: 20px;">
+      <div class="card-pin red"></div>
+      <div class="card-body">
+        <div style="font-family:'Caveat',cursive;font-size:30px;color:var(--red);">Head</div>
+        <div style="font-size:20px;font-weight:700;margin-top:4px;">輸出預測</div>
+        <div style="font-size:18px;color:var(--ink-soft);line-height:1.5;margin-top:8px;">
+          v4 沿用 v3 的 <strong>YOLO Head</strong>。輸出 bbox + class + obj
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-callout anim-rise-3 mt-16" style="background:rgba(217,119,87,0.10);font-size:19px;">
+    <strong>★ 從 v4 開始</strong>,後面所有 YOLO 變體都遵循這個三段式 ——
+    換 Backbone(CSP→ELAN→RepVGG)、換 Neck(PANet→BiFPN)、換 Head(coupled→decoupled)。
+    不是改架構,是<strong>改局部</strong>。
+  </div>
 </section>
 
 <section data-screen-label="42 CSPNet">
@@ -1781,24 +2295,24 @@ bh = ph · e^(th)      <span class="com"># anchor 高 × 縮放</span></pre>
   <div class="kicker anim-fade">YOLO 各版本對照總表</div>
   <h2 class="slide-title underline anim-rise mb-16">5 個維度橫向對照 · hover 看高亮</h2>
   <div class="anim-rise-1" data-demo="demo-yolo-table"></div>
-</section>
-  <div class="section-marker"><span class="num">03</span>·11<br>對照表</div>
-  <h2 class="slide-title underline anim-rise mb-24">YOLO 各版本對照總表</h2>
-  <table class="handwritten anim-rise-1" style="font-size: 17px;">
-    <thead>
-      <tr><th>版本</th><th>年</th><th>Backbone</th><th>Neck</th><th>Head</th><th>Anchor</th><th>Loss</th></tr>
-    </thead>
-    <tbody>
-      <tr><td><strong>v1</strong></td><td>2016</td><td>GoogLeNet-like</td><td>—</td><td>FC, 7×7×30</td><td>無</td><td>SSE multi-part</td></tr>
-      <tr><td><strong>v2</strong></td><td>2016</td><td>Darknet-19</td><td>passthrough</td><td>conv</td><td>5 anchors</td><td>SSE+sigmoid</td></tr>
-      <tr><td><strong>v3</strong></td><td>2018</td><td>Darknet-53</td><td>FPN-like</td><td>multi-scale</td><td>9 anchors</td><td>BCE+SSE</td></tr>
-      <tr><td><strong>v4</strong></td><td>2020</td><td>CSPDarknet+Mish</td><td>SPP+PANet</td><td>v3 head</td><td>9 anchors</td><td>CIoU+BCE</td></tr>
-      <tr><td><strong>v5</strong></td><td>2020</td><td>CSPDarknet (C3)</td><td>SPPF+CSP-PAN</td><td>v3 head</td><td>9 (auto)</td><td>CIoU+BCE</td></tr>
-      <tr><td><strong>v6</strong></td><td>2022</td><td>EfficientRep</td><td>Rep-PAN</td><td>Decoupled</td><td><strong>無</strong></td><td>VFL+SIoU+DFL</td></tr>
-      <tr><td><strong>v7</strong></td><td>2022</td><td>E-ELAN</td><td>SPPCSPC+PAN</td><td>Lead+Aux</td><td>有</td><td>CIoU+BCE</td></tr>
-      <tr><td><strong>v8</strong></td><td>2023</td><td>CSPDarknet (C2f)</td><td>SPPF+PAN</td><td>Decoupled</td><td><strong>無</strong></td><td>CIoU+DFL+BCE</td></tr>
-    </tbody>
-  </table>
+
+  <div class="cols-3 anim-rise-2 mt-16" style="gap: 20px;">
+    <div class="note-callout" style="background:rgba(74,135,168,0.12);font-size:18px;padding:16px;">
+      <div class="note-title" style="font-size:18px;">看 Backbone 列</div>
+      Darknet → CSPDarknet → ELAN/RepVGG ——
+      <strong>每代都在追求更好的特徵抽取</strong>
+    </div>
+    <div class="note-callout" style="background:rgba(217,119,87,0.10);font-size:18px;padding:16px;">
+      <div class="note-title" style="font-size:18px;">看 Anchor 列</div>
+      v2-v7 都是 anchor-based,v8 換 anchor-free ——
+      <strong>2023 後新模型都走 anchor-free</strong>
+    </div>
+    <div class="note-callout" style="background:rgba(106,155,94,0.15);font-size:18px;padding:16px;">
+      <div class="note-title" style="font-size:18px;">看 框架 列</div>
+      Darknet (C) → PyTorch ——
+      <strong>v5 是工業界轉折點</strong>,從此跟 PyTorch 生態綁定
+    </div>
+  </div>
 </section>
 
 <section data-screen-label="52 演進邏輯">
@@ -1815,6 +2329,44 @@ bh = ph · e^(th)      <span class="com"># anchor 高 × 縮放</span></pre>
     <div class="timeline-item"><div class="year">v6</div><div class="name">結構重參數化加速</div><div class="desc">RepVGG · 訓練多分支推論單分支</div></div>
     <div class="timeline-item"><div class="year">v7</div><div class="name">訓練技巧 SOTA</div><div class="desc">E-ELAN + Lead/Aux head</div></div>
     <div class="timeline-item"><div class="year">v8</div><div class="name">anchor-free + 多任務</div><div class="desc">Det / Seg / Pose / Cls 一個架構搞定</div></div>
+  </div>
+
+  <div class="anim-rise-2 mt-32">
+    <h3 class="serif" style="font-size:28px;color:var(--orange);text-align:center;margin-bottom:20px;">
+      <span class="caveat" style="font-size:32px;">三條進化主線</span>
+    </h3>
+    <div class="cols-3" style="gap: 24px;">
+      <div class="card" style="padding: 18px;">
+        <div class="card-pin blue"></div>
+        <div class="card-body">
+          <div style="font-family:'Caveat',cursive;font-size:28px;color:var(--blue);">主線 ①</div>
+          <div style="font-size:20px;font-weight:700;margin-top:4px;">特徵抽取更強</div>
+          <div style="font-size:17px;color:var(--ink-soft);line-height:1.5;margin-top:6px;">
+            v1 Darknet → v3 Darknet-53 → v4 CSPDarknet → v6 RepVGG → v7 ELAN
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding: 18px;">
+        <div class="card-pin orange"></div>
+        <div class="card-body">
+          <div style="font-family:'Caveat',cursive;font-size:28px;color:var(--orange);">主線 ②</div>
+          <div style="font-size:20px;font-weight:700;margin-top:4px;">尺度處理更細</div>
+          <div style="font-size:17px;color:var(--ink-soft);line-height:1.5;margin-top:6px;">
+            v1 單尺度 → v2 anchor → v3 多尺度 FPN → v4 PANet → v8 anchor-free
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding: 18px;">
+        <div class="card-pin red"></div>
+        <div class="card-body">
+          <div style="font-family:'Caveat',cursive;font-size:28px;color:var(--red);">主線 ③</div>
+          <div style="font-size:20px;font-weight:700;margin-top:4px;">部署更友善</div>
+          <div style="font-size:17px;color:var(--ink-soft);line-height:1.5;margin-top:6px;">
+            v1-v4 Darknet (C) → v5+ PyTorch → ONNX/TensorRT 一條龍
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -2374,6 +2926,7 @@ optimizer = optim.Adam(model.parameters(), lr=<span class="num">1e-3</span>)
 <script src="rf-demo.js"></script>
 <script src="conv-play.js"></script>
 <script src="grad-demo.js"></script>
+<script src="grad-descent-demo.js"></script>
 <script src="yolo-demo.js"></script>
 <script src="model-builder.js"></script>
 
